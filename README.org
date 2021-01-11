@@ -1,0 +1,13 @@
+* Clx-Im  - input method for clx
+
+** Usage
+
+** Installation
+
+** Author
+
++ I-Entropy (<1041559871@qq.com>)
+
+** Copyright
+
+Copyright (c) 2021 I-Entropy (<1041559871@qq.com>)
