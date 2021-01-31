@@ -4,3 +4,28 @@
     for now my goal is to port [[https://github.com/fcitx/xcb-imdkit/][xcb-imdkit]] to clx
 *** further
     make it more 'lisper'
+* take a look at demo
+** TODO compound text init
+   xcb_compound_text_init()
+   I guess this has something to done with utf-8, not clearly known what this suppose to do yet.
+** DONE open connection to X/ open a new window for test
+   just normal code
+** TODO open connection to XIM
+   xcb_xim_open
+** TODO process event
+*** TODO if has event
+**** TODO if event not filter
+***** TODO if ic exist && event is key_press or key_release
+***** TODO xcb_xim_forward_event
+***** TODO else free event
+*** TODO if no event
+    close xcb_xim&window
+
+
+* xcb_xim_set_im_callback
+* xcb_xim_set_log_handler
+* xcb_xim_open
+* xcb_xim_filter_event
+* xcb_xim_forward_event
+* xcb_xim_close
+* xcb_xim_destroy
