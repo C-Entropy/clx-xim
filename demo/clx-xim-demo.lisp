@@ -23,12 +23,13 @@
   ())
 
 (let ((clx-xim nil))
-  (defun set-up-clx-xim (display window
+  (defun set-up-clx-xim (display screen
 			 &key im-callback logger)
-    (setf clx-xim (make-clx-xim display window
-				:im-callback im-callback
-				:logger logger))
-    )
+    (setf clx-xim (make-clx-xim display screen))
+    (clx-xim-set-im-callback clx-xim im-callback)
+    (clx-xim-set-log-handler clx-xim logger)
+    (clx-xim-open clx-xim open-callback T NIL))
+
   (defun print-clx-xim ()
     (format t "~A~%" (im-callback clx-xim)))
   )
@@ -82,13 +83,15 @@
   (defun start-window ()
     (make-window)
     (display-window)
-    (set-up-clx-xim display window
-		    :im-callback '((forward-event . #'forward-event)
-				   (commit-string  . #'commit-string))
-		    :logger #'logger)
-    (event-loop)))
+    ;; (set-up-clx-xim display screen
+    ;; 		    :im-callback '((forward-event . #'forward-event)
+    ;; 				   (commit-string  . #'commit-string))
+    ;; 		    :logger #'logger)
+    ;; (event-loop)
+    ))
 
 
 (defun start-demo ()
   (start-window))
-;; (start-demo)
+
+(start-demo)

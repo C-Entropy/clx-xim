@@ -3,13 +3,14 @@
 	#:utils
 	#:xlib)
   (:import-from #:uiop #:getenv)
-  (:export make-clx-xim
-	   clx-xim-open
+  (:export #:make-clx-xim
+	   #:clx-xim-open
+	   #:clx-xim-set-im-callback
+	   #:clx-xim-set-log-handler
 	   ;;class clx-xim itself
-	   display
-	   logger
-	   im-callback
-	   ))
+	   #:display
+	   #:logger
+	   #:im-callback))
 (in-package #:clx-xim)
 
 (defclass-easy clx-xim ()
@@ -66,7 +67,8 @@
     (state-phase
      callback
      user-data
-     status))
+     (check-server :initform (make-instance 'check-server)
+		   :accessor check-server)))
 
 (defclass-easy check-server ()
     (index
@@ -84,14 +86,14 @@
 		    NIL)))
 	   (length "@im=")))
 
-(defun make-clx-xim (display window
+(defun make-clx-xim (display screen
 		     &key imname)
   "create a clx-xim and return it."
   ;; (or imname
   ;;   (getenv "XMODIFIERS"))
   (make-instance 'clx-xim
 		 :display display
-		 :window window
+		 :default-screen screen
 		 :server-name (clx-xim-make-im-name (or imname
 						       (getenv "XMODIFIERS")))
 		 :connect-state (make-instance 'connect-state
@@ -106,7 +108,67 @@
   (setf (user-data clx-xim) user-data))
 
 (defun clx-xim-set-log-handler (clx-xim logger)
-  (logger clx-xim logger))
+  (setf (logger clx-xim) logger))
+
+(defun -clx-im-init-atoms- (display atom-names)
+  (mapc #'intern-atom display atom-names))
+
+(defun -clx-xim-init- (clx-xim)
+  (when (init clx-xim)
+    (return-from -clx-xim-init- T))
+
+  (unless (-clx-im-init-atoms- (display clx-xim)
+			       '(xim-servers
+				 xim-locales
+				 xim-transport
+				 xim-protocol
+				 xim-xconnect)
+			       (1+ (atoms clx-xim)))
+    (return-from -clx-xim-init- NIL))
+  (setf (screen clx-xim) (display-default-screen (display clx-xim)))
+  (when (or (not (screen clx-xim))
+	    (not (default-screen clx-xim)))
+    (return-from -clx-xim-init- NIL))
+  (setf (init clx-xim) T))
+
+
+(defun -clx-change-event-mask- (window mask-key remove)
+  (let ((event-mask-keys (make-event-keys (window-event-mask window))))
+    (when remove
+      (when (find mask-key event-mask-keys)
+	(setf (window-event-mask window) (remove mask-key event-mask-keys)))
+      (return-from -clx-change-event-mask-))
+    (unless (find mask-key event-mask-keys);;when remove is NIL, we do add
+      (setf (window-event-mask window) (cons mask-key event-mask-keys)))))
+
+(defun -clx-xim-get-servers- (clx-xim)
+  NIL)
+
+(defun -clx-xim-preconnect-im- (clx-xim event)
+  NIL)
+
+(defun -clx-xim-open- (clx-xim)
+  (setf (state-phase (connect-state clx-xim)) :xim-connect-fail)
+  (setf (open-state clx-xim) :xim-open-invalid)
+
+  (unless (-clx-xim-init- clx-xim)
+    (return-from -clx-xim-open- NIL))
+
+  (when (auto-connect clx-xim)
+    (-clx-change-event-mask- (window clx-xim) :property-change NIL))
+
+  (unless (-clx-xim-get-servers- clx-xim)
+    (return-from -clx-xim-open- NIL))
+
+  ;; (setf (state-phase (connect-state clx-xim)) :xim_connect_check_server)
+  ;; ((lambda (check-server)
+  ;;    (setf (index check-server) 0)
+  ;;    (setf (requestor-window check-server) 0)
+  ;;    (setf (window check-server) 0)
+  ;;    (setf (subphase check-server) :xim_connect_check_server_prepare))
+  ;;  (check-server (connect-state clx-xim)))
+  ;; (-clx-xim-preconnect-im- clx-xim nNIL)
+  )
 
 
 (defun clx-xim-open (clx-xim clx-xim-open-callback auto-connect user-data)
@@ -117,36 +179,9 @@
   (setf (auto-connect clx-xim) auto-connect)
   (-clx-xim-open- clx-xim))
 
-(defun -clx-im-init-atoms- (display atom-names atoms)
-  (mapc #'intern-atom display atom-names)
-  )
 
-(defun -clx-xim-init- (clx-xim)
-  (when (init clx-xim)
-    (return-from -clx-xim-init- T))
 
-  (unless (-clx-im-init-atoms- (display clx-xim)
-			       '(XIM-SERVERS
-				 XIM-LOCALES
-				 XIM-TRANSPORT
-				 -XIM-PROTOCOL
-				 -XIM-XCONNECT)
-			       (atoms clx-xim))
-    (return-from -clx-xim-init- NIL))
-;TODO:   (setf (screen clx-xim) (display clx-xim))
-;TODO:   (setf (default-screen im) ())
-  (when (or (not (default-screen clx-xim))
-	    (not (screen clx-xim)))
-    (return-from -clx-xim-init- NIL))
-  (setf (init clx-xim) T))
 
-(defun -clx-xim-open- (clx-xim)
-  (setf (state-phase (connect-state clx-xim)) 'XIM-CONNECT-FAIL)
-  (setf (open-state clx-xim) 'XIM-OPEN-INVALID)
-  (unless (-clx-xim-init- clx-xim)
-	  (return-from -clx-xim-open- NIL))
-  (when (auto-connect clx-xim)
-    (-clx-change-event-mask- (display clx-xim) ())))
 
 ;; (defun clx-xim-filter-event (clx-xim event)
 ;;   (setf (yield-recheck clx-xim) NIL)
