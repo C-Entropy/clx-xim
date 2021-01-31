@@ -142,7 +142,8 @@
       (setf (window-event-mask window) (cons mask-key event-mask-keys)))))
 
 (defun -clx-xim-get-servers- (clx-xim)
-  NIL)
+  (setf (server-atoms clx-xim) (get-property (window clx-xim)
+					     (cdr (assoc :xim-servers (atoms clx-xim))))))
 
 (defun -clx-xim-preconnect-im- (clx-xim event)
   NIL)

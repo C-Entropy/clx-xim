@@ -93,5 +93,3 @@
 
 (defun start-demo ()
   (start-window))
-
-(start-demo)
