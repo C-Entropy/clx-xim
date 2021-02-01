@@ -110,20 +110,24 @@
 (defun clx-xim-set-log-handler (clx-xim logger)
   (setf (logger clx-xim) logger))
 
-(defun -clx-im-init-atoms- (display atom-names)
-  (mapc #'intern-atom display atom-names))
+(defun -clx-im-init-atoms- (display atom-names atoms)
+  (mapc (lambda (atom-name)
+	  (push (cons atom-name
+		      (intern-atom display atom-name))
+		atoms))
+	atom-names))
 
 (defun -clx-xim-init- (clx-xim)
   (when (init clx-xim)
     (return-from -clx-xim-init- T))
 
   (unless (-clx-im-init-atoms- (display clx-xim)
-			       '(xim-servers
-				 xim-locales
-				 xim-transport
-				 xim-protocol
-				 xim-xconnect)
-			       (1+ (atoms clx-xim)))
+			       '(:xim-servers
+				 :locales
+				 :transport
+				 :_xim_protocol
+				 :_xim_xconnect)
+			       (atoms clx-xim))
     (return-from -clx-xim-init- NIL))
   (setf (screen clx-xim) (display-default-screen (display clx-xim)))
   (when (or (not (screen clx-xim))
@@ -142,7 +146,7 @@
       (setf (window-event-mask window) (cons mask-key event-mask-keys)))))
 
 (defun -clx-xim-get-servers- (clx-xim)
-  (setf (server-atoms clx-xim) (get-property (window clx-xim)
+  (setf (server-atoms clx-xim) (get-property  (window clx-xim)
 					     (cdr (assoc :xim-servers (atoms clx-xim))))))
 
 (defun -clx-xim-preconnect-im- (clx-xim event)

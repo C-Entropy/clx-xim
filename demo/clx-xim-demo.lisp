@@ -93,3 +93,6 @@
 
 (defun start-demo ()
   (start-window))
+(start-demo)
+(find-atom (get-display) :_net_wm_name)
+(intern-atom (get-display) :_)
