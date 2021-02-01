@@ -120,7 +120,6 @@
 (defun -clx-xim-init- (clx-xim)
   (when (init clx-xim)
     (return-from -clx-xim-init- T))
-
   (unless (-clx-im-init-atoms- (display clx-xim)
 			       '(:xim-servers
 				 :locales
@@ -130,8 +129,9 @@
 			       (atoms clx-xim))
     (return-from -clx-xim-init- NIL))
   (setf (screen clx-xim) (display-default-screen (display clx-xim)))
-  (when (or (not (screen clx-xim))
-	    (not (default-screen clx-xim)))
+  (when (not (screen clx-xim))
+;; (or (not (screen clx-xim))
+	;;     (not (default-screen clx-xim)))
     (return-from -clx-xim-init- NIL))
   (setf (init clx-xim) T))
 
