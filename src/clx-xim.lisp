@@ -8,8 +8,8 @@
 	   #:clx-xim-set-im-callback
 	   #:clx-xim-set-log-handler
 	   ;;class clx-xim itself
-	   #:display
-	   #:logger
+	   ;; #:display
+	   ;; #:logger
 	   #:im-callback))
 (in-package #:clx-xim)
 
@@ -178,39 +178,43 @@
 		       :class :input-output
 		       :visual (screen-root-visual (default-screen clx-xim)))))
 
+(defun -check-next-server- (clx-xim)
+  ((lambda (check-server)
+     (setf (subphase check-server) :xim-connect-check-server-prepare
+	   (index check-server) (1+ (index check-server)))
+     (when (requestor-window check-server)
+       (destroy-window (requestor-window check-server))))
+   (check-server (connect-state clx-xim))))
+
 (defun -clx-xim-preconnect-im- (clx-xim event)
   ;; (print "-clx-xim-preconnect-im-")
   ;; (print (state-phase (connect-state clx-xim)))
   (block block-check
     (case (state-phase (connect-state clx-xim))
-      (:xim_connect_check_server
+      (:xim-connect-check-server
        (when (eq (length (server-atoms clx-xim))
 		 (index (check-server (connect-state clx-xim))))
-	 (setf (state-phase (connect-state clx-xim)) :xim_connect_fail)
+	 (setf (state-phase (connect-state clx-xim)) :xim-connect-fail)
 	 (return-from block-check))
        (case (subphase (check-server (connect-state clx-xim)))
-	 (:xim_connect_check_server_prepare
-	  (-clx-xim-check-server-prepare- clx-xim)
-	  (setf (subphase (check-server (connect-state clx-xim)))
-		:xim_connect_check_server_locale)
-	  ;; (if (-clx-xim-check-server-prepare- clx-xim)
-	  ;;     (setf (subphase (check-server (connect-state clx-xim)))
-	  ;; 	    :xim_connect_check_server_locale)
-	  ;;     (progn (-check-next-server- clx-xim)
-	  ;; 	     (return-from block-check)))
-	  )
-	 (:xim_connect_check_server_locale
+	 (:xim-connect-check-server-prepare
+	  (if (-clx-xim-check-server-prepare- clx-xim)
+	      (setf (subphase (check-server (connect-state clx-xim)))
+		    :xim-connect-check-server-locale)
+	      (progn (-check-next-server- clx-xim)
+		     (return-from block-check))))
+	 (:xim-connect-check-server-locale
 
-	  (print ":xim_connect_check_server_locale")
+	  (print ":xim-connect-check-server-locale")
 	  (setf (subphase (check-server (connect-state clx-xim)))
-		:xim_connect_check_server_transport))
-	 (:xim_connect_check_server_transport
+		:xim-connect-check-server-transport))
+	 (:xim-connect-check-server-transport
 	  ;; (-clx-xim-check-server-transport- clx-xim)
-	  (print ":xim_connect_check_server_transport")
+	  (print ":xim-connect-check-server-transport")
 	  (setf (subphase (check-server (connect-state clx-xim)))
-		:xim_connect_check_server_transport_wait))
-	 (:xim_connect_check_server_transport_wait
-	  (print ":xim_connect_check_server_transport_wait")
+		:xim-connect-check-server-transport_wait))
+	 (:xim-connect-check-server-transport_wait
+	  (print ":xim-connect-check-server-transport_wait")
 
 	  (setf (state-phase (connect-state clx-xim))
 		:wait-to-complete)
@@ -219,8 +223,8 @@
 	  ;; (case (-clx-xim-check-server-tranport-wait- clx-xim event)
 	  ;;   (:action_accept
 	  ;;    (setf event NIL
-	  ;; 	   (state-phase (connect-state clx-xim)) :xim_connect_connect
-	  ;; 	   (subphase (connect (connect-state clx-xim))) :xim_connect_connect_prepare)
+	  ;; 	   (state-phase (connect-state clx-xim)) :xim-connect-connect
+	  ;; 	   (subphase (connect (connect-state clx-xim))) :xim-connect-connect_prepare)
 	  ;;    (return-from -clx-xim-preconnect-im-))
 	  ;;   (:action_failed
 	  ;;    (setf event NIL)
@@ -229,32 +233,32 @@
 	  ;;   (:action_yield
 	  ;;    (return-from -clx-xim-preconnect-im-)))
 	  )))
-      ;; (:xim_connect_connect
+      ;; (:xim-connect-connect
       ;; ;;  (case (subphase (connect (connect-state clx-xim)))
-      ;; ;; 	 (:xim_connect_connect_prepare
+      ;; ;; 	 (:xim-connect-connect_prepare
       ;; ;; 	  (-clx-xim-connect-prepare- clx-xim)
-      ;; ;; 	  (setf (subphase (connect (connect-state clx-xim))) :xim_connect_connect_wait))
-      ;; ;; 	 (:xim_connect_connect_wait
+      ;; ;; 	  (setf (subphase (connect (connect-state clx-xim))) :xim-connect-connect_wait))
+      ;; ;; 	 (:xim-connect-connect_wait
       ;; ;; 	  (case (-clx-xim-connect-connect-wait clx-xim event)
       ;; ;; 	    (:accept_accept
       ;; ;; 	     (setf event NIL
-      ;; ;; 		   (subphase (connect (connect-state clx-xim))) :xim_connect_wait_reply)
+      ;; ;; 		   (subphase (connect (connect-state clx-xim))) :xim-connect-wait_reply)
       ;; ;; 	     (return-from -clx-xim-preconnect-im-))
       ;; ;; 	    (:accept_failed
       ;; ;; 	     (setf event NIL
-      ;; ;; 		   (state-phase (connect-state clx-xim)) :xim_connect_fail)
+      ;; ;; 		   (state-phase (connect-state clx-xim)) :xim-connect-fail)
       ;; ;; 	     (return-from -clx-xim-preconnect-im-)
       ;; ;; 	     (:accept_yield
       ;; ;; 	      (return-from -clx-xim-preconnect-im-))))
-      ;; ;; 	  (:xim_connect_connect_wait_reply
+      ;; ;; 	  (:xim-connect-connect_wait_reply
       ;; ;; 	   (case (-clx-xim-connect-wait-reply clx-xim event)
       ;; ;; 	     (:action_accept
       ;; ;; 	      (setf event NIL
-      ;; ;; 		    (state-phase (connect-state clx-xim)) :xim_connect_done)
+      ;; ;; 		    (state-phase (connect-state clx-xim)) :xim-connect-done)
       ;; ;; 	      (return-from -clx-xim-preconnect-im-))
       ;; ;; 	     (:action_failed
       ;; ;; 	      (setf event NIL
-      ;; ;; 		    (state-phase (connect-state clx-xim)) :xim_connect_fail)
+      ;; ;; 		    (state-phase (connect-state clx-xim)) :xim-connect-fail)
       ;; ;; 	      (return-from -clx-xim-preconnect-im-)
       ;; ;; 	      (:action_yield
       ;; ;; 	       (return-from -clx-xim-preconnect-im-)))))
@@ -277,12 +281,12 @@
   (unless (setf (server-atoms clx-xim) (-clx-xim-get-servers- clx-xim))
     (return-from -clx-xim-open- NIL))
 
-  (setf (state-phase (connect-state clx-xim)) :xim_connect_check_server)
+  (setf (state-phase (connect-state clx-xim)) :xim-connect-check-server)
   ((lambda (check-server)
      (setf (index check-server) 0)
      (setf (requestor-window check-server) 0)
      (setf (window check-server) 0)
-     (setf (subphase check-server) :xim_connect_check_server_prepare))
+     (setf (subphase check-server) :xim-connect-check-server-prepare))
    (check-server (connect-state clx-xim)))
   (-clx-xim-preconnect-im- clx-xim NIL))
 

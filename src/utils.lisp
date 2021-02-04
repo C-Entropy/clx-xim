@@ -8,6 +8,7 @@
   (if (listp slot)
       slot
       `(,slot :initarg ,(intern (symbol-name slot) "KEYWORD")
+	      :initform NIL
 	      :accessor ,slot)))
 
 (defmacro defclass-easy (class-name supper-class slots &optional (doc "None") )
