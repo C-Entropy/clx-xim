@@ -20,6 +20,7 @@
      window
      im-callback
      user-data
+     root-window
      ;;some global data
      ;; sequence
      byte-order
@@ -94,6 +95,7 @@
   (make-instance 'clx-xim
 		 :display display
 		 :default-screen screen
+		 :root-window (screen-root screen)
 		 :server-name (clx-xim-make-im-name (or imname
 						       (getenv "XMODIFIERS")))
 		 :connect-state (make-instance 'connect-state
@@ -138,21 +140,33 @@
 
 (defun -clx-change-event-mask- (window mask-key remove)
   (let ((event-mask-keys (make-event-keys (window-event-mask window))))
+    (format t "1 : ~A~%"event-mask-keys)
     (when remove
       (when (find mask-key event-mask-keys)
 	(setf (window-event-mask window) (remove mask-key event-mask-keys)))
+      (format t "remove : ~A~%" (window-event-mask window))
       (return-from -clx-change-event-mask-))
     (unless (find mask-key event-mask-keys);;when remove is NIL, we do add
-      (setf (window-event-mask window) (cons mask-key event-mask-keys)))))
+      (setf (window-event-mask window) (cons mask-key event-mask-keys))
+      (format t "add : ~A~%" (window-event-mask window)))))
 
 (defun -clx-xim-get-servers- (clx-xim)
-  (setf (server-atoms clx-xim) NIL)
-  (mapc (lambda (atom-id)
-	  (push (atom-name (display clx-xim)  atom-id)
-		(server-atoms clx-xim)))
-	(get-property (screen-root (screen clx-xim))
-		      :xim_servers))
-  (print (server-atoms clx-xim)))
+  "get XIM_SERVERS from root-window, and trans them into aomt-name"
+
+  (setf (server-atoms clx-xim)
+	(get-property (root-window clx-xim)
+		       :xim_servers
+		       :transform #'(lambda (atom-id)
+				      (atom-name (display clx-xim) atom-id)))))
+
+;; (defun -clx-xim-get-servers- (clx-xim)
+;;   (setf (server-atoms clx-xim) NIL)
+;;   (mapc (lambda (atom-id)
+;; 	  (push (atom-name (display clx-xim)  atom-id)
+;; 		(server-atoms clx-xim)))
+;; 	(get-property (screen-root (screen clx-xim))
+;; 		      :xim_servers))
+;;   (print (server-atoms clx-xim)))
 
 (defun -clx-xim-preconnect-im- (clx-xim event)
   (print "-clx-xim-preconnect-im-")
@@ -234,7 +248,7 @@
     (return-from -clx-xim-open- NIL))
 
   (when (auto-connect clx-xim)
-    (-clx-change-event-mask- (window clx-xim) :property-change NIL))
+    (-clx-change-event-mask- (root-window clx-xim) :property-change NIL))
 
   (unless (-clx-xim-get-servers- clx-xim)
     (return-from -clx-xim-open- NIL))
