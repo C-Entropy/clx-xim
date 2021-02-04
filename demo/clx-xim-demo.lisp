@@ -119,5 +119,4 @@
 ;; 			       "Hello, World (from the CLX clipboard)!"
 ;; 			       target 8
 ;; 			       :transform #'char-code)
-
 (start-demo)

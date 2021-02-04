@@ -155,8 +155,31 @@
 		:transform #'(lambda (atom-id)
 			       (atom-name (display clx-xim) atom-id))))
 
+(defun -clx-xim-check-server-name- (clx-xim)
+  "make sure server-name from env is string= to IM server get from Window"
+  (string= (concatenate 'string "@server=" (server-name clx-xim))
+	   (nth
+	    (index (check-server (connect-state clx-xim)))
+	    (server-atoms clx-xim))))
+
+(defun -clx-xim-check-server-prepare- (clx-xim)
+  (setf (window (check-server (connect-state clx-xim)))
+	(selection-owner (display clx-xim)
+			 (nth
+			  (index (check-server (connect-state clx-xim)))
+			  (server-atoms clx-xim))))
+  (unless (-clx-xim-check-server-name- clx-xim)
+    (return-from -clx-xim-check-server-prepare- NIL))
+  (setf (requestor-window (check-server (connect-state clx-xim)))
+	(create-window :parent (root-window clx-xim)
+		       :depth 0;;use the depth of parent
+		       :x 0 :y 0
+		       :width 1 :height 1
+		       :class :input-output
+		       :visual (screen-root-visual (default-screen clx-xim)))))
+
 (defun -clx-xim-preconnect-im- (clx-xim event)
-  (print "-clx-xim-preconnect-im-")
+  ;; (print "-clx-xim-preconnect-im-")
   ;; (print (state-phase (connect-state clx-xim)))
   (block block-check
     (case (state-phase (connect-state clx-xim))
@@ -166,14 +189,13 @@
 	 (setf (state-phase (connect-state clx-xim)) :xim_connect_fail)
 	 (return-from block-check))
        (case (subphase (check-server (connect-state clx-xim)))
-
 	 (:xim_connect_check_server_prepare
-	  (print ":xim_connect_check_server_prepare")
+	  (-clx-xim-check-server-prepare- clx-xim)
 	  (setf (subphase (check-server (connect-state clx-xim)))
 		:xim_connect_check_server_locale)
-	  ;; (if (-clx-xim-check-server-preper- clx-xim)
+	  ;; (if (-clx-xim-check-server-prepare- clx-xim)
 	  ;;     (setf (subphase (check-server (connect-state clx-xim)))
-	  ;; 	    :xim_connect_check_locale)
+	  ;; 	    :xim_connect_check_server_locale)
 	  ;;     (progn (-check-next-server- clx-xim)
 	  ;; 	     (return-from block-check)))
 	  )
