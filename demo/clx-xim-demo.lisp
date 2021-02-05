@@ -1,7 +1,8 @@
 (defpackage #:demo
   (:use #:cl
 	#:xlib
-	#:clx-xim))
+	#:clx-xim)
+  (:export #:start-demo))
 
 (in-package #:demo)
 
@@ -73,7 +74,6 @@
   (defun event-loop ()
     "doc"
     (event-case (display)
-
       ((:client-message) (window type format data)
        (format t "window: ~A type:  ~A format: ~A data: ~A~%") window type format data)
 
@@ -91,15 +91,18 @@
 
   (defun start-window ()
     (make-window)
+    (display-window)
     (set-up-clx-xim display screen
 		    :im-callback '((:forward-event . #'forward-event)
 				   (:commit-string  . #'commit-string))
 		    :logger #'logger)
-    (display-window)
-    (event-loop)))
+
+    ;; (event-loop)
+    ))
 
 
 (defun start-demo ()
+  (format t "~%New demo~%")
   (start-window))
 
 ;; (find-atom (get-display) :xim_servers)
@@ -119,4 +122,4 @@
 ;; 			       "Hello, World (from the CLX clipboard)!"
 ;; 			       target 8
 ;; 			       :transform #'char-code)
-(start-demo)
+;; (start-demo)

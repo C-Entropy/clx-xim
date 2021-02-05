@@ -9,3 +9,6 @@
      (1  (print setp)
       (print step))
      (2 (print "a")))))
+
+(clx-xim/demo:sta)
+(demo:start-demo)
