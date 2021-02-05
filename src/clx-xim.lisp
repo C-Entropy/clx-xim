@@ -281,15 +281,16 @@
 		       :width 1 :height 1
 		       :class :input-output
 		       :visual (screen-root-visual (default-screen clx-xim))))
+
   (send-event (im-window clx-xim)
-	      :client-message
-	      NIL
-	      '(:window (window-id (im-window clx-xim)))
-	      '(:type :_xim_xconnect)
-	      '(:format 32)
-	      '(:data (window-id (im-client-window clx-xim))
-		0 0 0 0)
-	      :propagate-p NIL))
+		     :client-message
+		     0
+		     :window (im-window clx-xim)
+		     :type :_xim_xconnect
+		     :format 32
+		     :data (list (window-id (im-client-window clx-xim))
+				 0 0 0 0)
+		     :propagate-p NIL))
 
 (defun -clx-xim-preconnect-im- (clx-xim event)
   ;; (print "-clx-xim-preconnect-im-")
