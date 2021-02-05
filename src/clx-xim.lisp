@@ -273,6 +273,24 @@
 	 ;; (print (atoms clx-xim))
 	 (return-from -clx-xim-check-server-tranport-wait- :action-accept))))))
 
+(defun -clx-xim-connect-prepare- (clx-xim)
+  (setf (im-client-window clx-xim)
+	(create-window :parent (root-window clx-xim)
+		       :depth 0;;use the depth of parent
+		       :x 0 :y 0
+		       :width 1 :height 1
+		       :class :input-output
+		       :visual (screen-root-visual (default-screen clx-xim))))
+  (send-event (im-window clx-xim)
+	      :client-message
+	      NIL
+	      '(:window (window-id (im-window clx-xim)))
+	      '(:type :_xim_xconnect)
+	      '(:format 32)
+	      '(:data (window-id (im-client-window clx-xim))
+		0 0 0 0)
+	      :propagate-p NIL))
+
 (defun -clx-xim-preconnect-im- (clx-xim event)
   ;; (print "-clx-xim-preconnect-im-")
   ;; (print (state-phase (connect-state clx-xim)))
@@ -310,40 +328,41 @@
 	    (:action-yield
 	     (return-from -clx-xim-preconnect-im- NIL)))
 	  (return-from block-check))))
-      ;; (:xim-connect-connect
-      ;; ;;  (case (subphase (connect (connect-state clx-xim)))
-      ;; ;; 	 (:xim-connect-connect_prepare
-      ;; ;; 	  (-clx-xim-connect-prepare- clx-xim)
-      ;; ;; 	  (setf (subphase (connect (connect-state clx-xim))) :xim-connect-connect_wait))
-      ;; ;; 	 (:xim-connect-connect_wait
-      ;; ;; 	  (case (-clx-xim-connect-connect-wait clx-xim event)
-      ;; ;; 	    (:accept_accept
-      ;; ;; 	     (setf event NIL
-      ;; ;; 		   (subphase (connect (connect-state clx-xim))) :xim-connect-wait_reply)
-      ;; ;; 	     (return-from -clx-xim-preconnect-im-))
-      ;; ;; 	    (:accept_failed
-      ;; ;; 	     (setf event NIL
-      ;; ;; 		   (state-phase (connect-state clx-xim)) :xim-connect-fail)
-      ;; ;; 	     (return-from -clx-xim-preconnect-im-)
-      ;; ;; 	     (:accept_yield
-      ;; ;; 	      (return-from -clx-xim-preconnect-im-))))
-      ;; ;; 	  (:xim-connect-connect_wait_reply
-      ;; ;; 	   (case (-clx-xim-connect-wait-reply clx-xim event)
-      ;; ;; 	     (:action_accept
-      ;; ;; 	      (setf event NIL
-      ;; ;; 		    (state-phase (connect-state clx-xim)) :xim-connect-done)
-      ;; ;; 	      (return-from -clx-xim-preconnect-im-))
-      ;; ;; 	     (:action_failed
-      ;; ;; 	      (setf event NIL
-      ;; ;; 		    (state-phase (connect-state clx-xim)) :xim-connect-fail)
-      ;; ;; 	      (return-from -clx-xim-preconnect-im-)
-      ;; ;; 	      (:action_yield
-      ;; ;; 	       (return-from -clx-xim-preconnect-im-)))))
+      (:xim-connect-connect
+       (case (print (connect-subphase (connect-state clx-xim)))
+	 (:xim-connect-connect-prepare
+	  (-clx-xim-connect-prepare- clx-xim)
+	  (setf (connect-subphase (connect-state clx-xim)) :xim-connect-connect-wait))
+	 (:xim-connect-connect-wait
 
-      ;; ;; 	  (otherwise (return-from -clx-xim-preconnect-im-)))))
+
+	  ;; (case (-clx-xim-connect-connect-wait clx-xim event)
+	  ;;   (:accept_accept
+	  (setf (connect-subphase (connect-state clx-xim)) :xim-connect-connect-wait-reply)
+	  ;;    (return-from -clx-xim-preconnect-im-))
+	  ;;   (:accept_failed
+	  ;;    (setf event NIL
+	  ;; 	   (state-phase (connect-state clx-xim)) :xim-connect-fail)
+	  ;;    (return-from -clx-xim-preconnect-im-)
+	  ;;    (:accept_yield
+	  ;;     (return-from -clx-xim-preconnect-im-))))
+	  )
+	 (:xim-connect-connect-wait-reply
+
+
+	   ;; (case (-clx-xim-connect-wait-reply clx-xim event)
+	   ;;   (:action_accept
+	  (setf (state-phase (connect-state clx-xim)) :xim-connect-done)
+	   ;;    (return-from -clx-xim-preconnect-im-))
+	   ;;   (:action_failed
+	   ;;    (setf event NIL
+	   ;; 	    (state-phase (connect-state clx-xim)) :xim-connect-fail)
+	   ;;    (return-from -clx-xim-preconnect-im-)
+	   ;;    (:action_yield
+	   ;;     (return-from -clx-xim-preconnect-im-))))
+	   )))
       (otherwise (return-from -clx-xim-preconnect-im-))))
-  (-clx-xim-preconnect-im- clx-xim event)
-  )
+  (-clx-xim-preconnect-im- clx-xim event))
 
 (defun -clx-xim-open- (clx-xim)
   (setf (open-state clx-xim) :xim-open-invalid
