@@ -292,24 +292,31 @@
 				 0 0 0 0)
 		     :propagate-p NIL))
 
-(defun -clx-xim-preconnect-im- (clx-xim event)
+(defun -clx-xim-connect-wait (clx-xim)
+  (let ((display (display clx-xim)))
+    (event-case (display)
+      ((:client-message) (window type format data)
+       (format t ">>~%~A~% ~A~% ~A~% ~A~%" window type format data))))
+  :action-accept)
+
+(defun -clx-xim-preconnect-im- (clx-xim)
   ;; (print "-clx-xim-preconnect-im-")
   ;; (print (state-phase (connect-state clx-xim)))
   ;; (print (subphase (check-server (connect-state clx-xim))))
-  (block block-check
+  (block block-preconnect
     (case (state-phase (connect-state clx-xim))
       (:xim-connect-check-server
        (when (eq (length (server-atoms clx-xim))
 		 (index (check-server (connect-state clx-xim))))
 	 (setf (state-phase (connect-state clx-xim)) :xim-connect-fail)
-	 (return-from block-check))
+	 (return-from block-preconnect))
        (case (subphase (check-server (connect-state clx-xim)))
 	 (:xim-connect-check-server-prepare
 	  (if (-clx-xim-check-server-prepare- clx-xim)
 	      (setf (subphase (check-server (connect-state clx-xim)))
 		    :xim-connect-check-server-locale)
 	      (progn (-check-next-server- clx-xim)
-		     (return-from block-check))))
+		     (return-from block-preconnect))))
 	 (:xim-connect-check-server-locale ;TODO:
 	  (setf (subphase (check-server (connect-state clx-xim)))
 		:xim-connect-check-server-transport))
@@ -328,24 +335,23 @@
 	     (-check-next-server- clx-xim))
 	    (:action-yield
 	     (return-from -clx-xim-preconnect-im- NIL)))
-	  (return-from block-check))))
+	  (return-from block-preconnect))))
       (:xim-connect-connect
        (case (print (connect-subphase (connect-state clx-xim)))
 	 (:xim-connect-connect-prepare
 	  (-clx-xim-connect-prepare- clx-xim)
 	  (setf (connect-subphase (connect-state clx-xim)) :xim-connect-connect-wait))
 	 (:xim-connect-connect-wait
-
-
-	  ;; (case (-clx-xim-connect-connect-wait clx-xim event)
-	  ;;   (:accept_accept
-	  (setf (connect-subphase (connect-state clx-xim)) :xim-connect-connect-wait-reply)
+	  (case (-clx-xim-connect-wait clx-xim)
+	    (:action-accept
+	     (setf (connect-subphase (connect-state clx-xim)) :xim-connect-connect-wait-reply)
+	     (return-from block-preconnect)))
 	  ;;    (return-from -clx-xim-preconnect-im-))
-	  ;;   (:accept_failed
+	  ;;   (:action-failed
 	  ;;    (setf event NIL
 	  ;; 	   (state-phase (connect-state clx-xim)) :xim-connect-fail)
 	  ;;    (return-from -clx-xim-preconnect-im-)
-	  ;;    (:accept_yield
+	  ;;    (:action-yield
 	  ;;     (return-from -clx-xim-preconnect-im-))))
 	  )
 	 (:xim-connect-connect-wait-reply
@@ -363,7 +369,7 @@
 	   ;;     (return-from -clx-xim-preconnect-im-))))
 	   )))
       (otherwise (return-from -clx-xim-preconnect-im-))))
-  (-clx-xim-preconnect-im- clx-xim event))
+  (-clx-xim-preconnect-im- clx-xim))
 
 (defun -clx-xim-open- (clx-xim)
   (setf (open-state clx-xim) :xim-open-invalid
@@ -385,7 +391,7 @@
      (setf (window check-server) 0)
      (setf (subphase check-server) :xim-connect-check-server-prepare))
    (check-server (connect-state clx-xim)))
-  (-clx-xim-preconnect-im- clx-xim NIL))
+  (-clx-xim-preconnect-im- clx-xim))
 
 
 (defun clx-xim-open (clx-xim clx-xim-open-callback auto-connect user-data)
