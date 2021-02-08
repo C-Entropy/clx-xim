@@ -138,8 +138,9 @@
 		 :xim-sequence 0
 		 :queue (make-array 5 :fill-pointer 0
 				      :adjustable t)
-		 :byte-order "l";;waiting
-		 ))
+		 :byte-order (if (= 1 (ldb (byte 8 0) 1))
+				 "l"
+				 "B")))
 
 (defun clx-xim-set-im-callback (clx-xim callbacks user-data)
   (setf (im-callback clx-xim) callbacks)
@@ -438,6 +439,7 @@
 	     (accept-win clx-xim) (xlib::lookup-window (display clx-xim) (elt data 0)));TODO: get window obj
        (unless (-clx-xim-send-frame- clx-xim (make-instance 'clx-im-connect-fr
 							    :byte-order (byte-order clx-xim)
+							    :pad 0
 							    :client-major-protocol-version 0
 							    :client-minor-protocol-version 0
 							    :protocol-size 0
