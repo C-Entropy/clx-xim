@@ -1,5 +1,6 @@
 (defpackage clx-xim
   (:use #:cl
+	#:ximproth
 	#:utils
 	#:xlib)
   (:import-from #:uiop #:getenv)
@@ -20,7 +21,6 @@
 (defparameter *clx-xim-cm-data-size* 20)
 (defparameter *clx-xim-header-size* 4
   "doc")
-
 
 (define-class-easy clx-xim ()
     (;;basic data which should always be valid
@@ -87,9 +87,11 @@
      window
      requestor-window))
 
-(define-packet clx-im-xpcs-fr-t
-    ((length-of-string-in-bytes :u1)
-     (fr-string :u1)))
+;; (define-packet clx-im-xpcs-fr-t
+;;     ((length-of-string-in-bytes :u1)
+;;      (fr-string :u1)))
+
+(defgeneric -clx-xim-read-frame- (obj data))
 
 (define-packet clx-im-connect-fr
     ((byte-order :u1)
@@ -99,15 +101,37 @@
      (protocol-size :u2)
      (protocol-items :strings))
   :size-packet
-  )
+  (+ 8
+     (strings-bytes protocol-items))
+  :opcode *clx-xim-connect*)
+
+(defmethod obj-to-data :before ((frame clx-im-connect-fr))
+  (setf (protocol-size frame) (strings-bytes (protocol-items frame))))
+
+;; (obj-to-data (make-instance 'clx-im-connect-fr
+;; 			    :byte-order "l"
+;; 			    :pad 0
+;; 			    :client-major-protocol-version 0
+;; 			    :client-minor-protocol-version 0
+;; 			    ;; :protocol-size 0
+;; 			    ;; :protocol-items '("0" "a")
+;; 			    ))
 
 (define-packet clx-im-packet-header-fr
     ((major-opcode :u1)
      (minor-opcode :u1)
      (header-bytes :u2)))
 
-(defmethod write-obj-to-data ((obj clx-im-connect-fr) data)
-  (push () data))
+(define-packet clx-im-connect-reply-fr
+    ((server-major-protocol-version :u2)
+     (server-minor-protocol-version :u2)))
+
+(defmethod -clx-xim-read-frame- ((obj clx-im-connect-reply-fr) data)
+  (setf (server-major-protocol-version obj) (byte-to-data :u2 data))
+  (pop data)
+  (pop data)
+  (setf (server-minor-protocol-version obj) (byte-to-data :u2 data))
+  obj)
 
 (defun clx-xim-make-im-name (im-name)
   "make im name using im-name, cutting down '@im=', then return the left part"
@@ -138,8 +162,8 @@
 		 :queue (make-array 5 :fill-pointer 0
 				      :adjustable t)
 		 :byte-order (if (= 1 (ldb (byte 8 0) 1))
-				 "l"
-				 "B")))
+				 (char-code #\l)
+				 (char-code #\B))))
 
 (defun clx-xim-set-im-callback (clx-xim callbacks user-data)
   (setf (im-callback clx-xim) callbacks)
@@ -357,24 +381,22 @@
 	     ;; 		   :propagate-p NIL)
 	     ;;   )
 	     )
-      (progn (format t "~%send-event ~A ~A ~A~%" data window (xlib::lookup-window display window))
-	     (format t "~%send-event ~A~%" (obj-to-data (first data)))
-
-	     ;; (send-event (xlib::lookup-window display window)
-	     ;; 		 :client-message
-	     ;; 		 0
-	     ;; 		 :window (xlib::lookup-window display window)
-	     ;; 		 :type protocol-atom
-	     ;; 		 :format 8
-	     ;; 		 :data (padding-data-list (data- data) *clx-xim-cm-data-size*)
-	     ;; 		 :propagate-p NIL)
+      (progn (format t "~%send-event ~A ~A~%" data window)
+	     (send-event window
+			 :client-message
+			 0
+			 :window window
+			 :type protocol-atom
+			 :format 8
+			 :data (padding-data-list data *clx-xim-cm-data-size*)
+			 :propagate-p NIL)
 	     (format t "~%send-event~%"))))
 
 (defun -clx-xim-send-message- (clx-xim data length)
   (format t "~%-clx-xim-send-message-~%")
   (-clx-send-xim-message- (display clx-xim)
 			  :_xim_protocol
-			  (window-id (accept-win clx-xim))
+			  (accept-win clx-xim)
 			  data
 			  length
 			  (concatenate 'string
@@ -382,50 +404,16 @@
 				       "_" (write-to-string (xim-sequence clx-xim))))
   (setf (xim-sequence clx-xim) (1+ (xim-sequence clx-xim))))
 
-
-
-
-(defun align-to (to ptr len remain)
-  (let ((diff (if (= 0 (mod len to))
-		  0
-		  (- to (mod len to)))))
-    (when remain
-      (when (< remain diff)
-	(return-from align-to 0))
-      (setf remain (- remain diff)))
-    (+ ptr diff)))
-
-(defun align-2 (ptr len remain)
-  (align-to 2 ptr len remain))
-
-(defun align-4 (ptr len remain)
-  (align-to 4 ptr len remain))
-
-(defun clx-im-xpcs-fr-size (frame)
-  (let ((size 0))
-    (dolist (item frame)
-      (let ((s (+ 2
-		  (length-of-string-in-bytes item))))
-	(setf size (+ size
-		      (align-4 s s NIL)))))
-    size))
-
-(defgeneric frame-size-func (frame))
-
-(defmethod frame-size-func ((frame clx-im-connect-fr))
-  (+ (* 2 3)
-     (align-2 1 1 NIL)
-     (clx-im-xpcs-fr-size (protocol-items frame))))
-
-
 (defun -clx-xim-send-frame- (clx-xim frame)
   (format t "~%-clx-xim-send-frame-~%")
-  (let ((length (frame-size-func frame)))
+  (let ((packet-size (size-packet frame)))
     (-clx-xim-send-message- clx-xim
-			    (list frame
-			     ;; (xim-proto-frame-opcode frame)
-				  0 (/ length 4))
-			    length)))
+			    (append (obj-to-data (make-instance 'clx-im-packet-header-fr
+								:major-opcode (clx-proto-frame-opcode frame)
+								:minor-opcode 0
+								:header-bytes (/ packet-size 4)))
+				    (obj-to-data frame))
+			    packet-size)))
 
 (defun -clx-xim-connect-wait- (clx-xim)
   (let ((display (display clx-xim)))
@@ -437,6 +425,7 @@
        (setf (major-code clx-xim) 0
 	     (minor-code clx-xim) 0
 	     (accept-win clx-xim) (xlib::lookup-window (display clx-xim) (elt data 0)));TODO: get window obj
+
        (unless (-clx-xim-send-frame- clx-xim (make-instance 'clx-im-connect-fr
 							    :byte-order (byte-order clx-xim)
 							    :pad 0
@@ -444,23 +433,30 @@
 							    :client-minor-protocol-version 0
 							    :protocol-size 0
 							    :protocol-items NIL))
-	 (return-from -clx-xim-connect-wait- :action-failed)))))
-  :action-accept)
+	 (return-from -clx-xim-connect-wait- :action-failed))
+       :action-accept))))
 
 (defun -clx-read-xim-message- (display window format data)
-  (case format
-    (8
-     (make-instance 'clx-im-packet-header-fr
-		    :major-opcode (elt data 0)
-		    :minor-opcode (elt data 1)
-		    :header-bytes (elt data 2))
-     )
-    (32
-     ;; (format t "~%32~%")
-     (let* ((length (elt data 0))
-	   (atom (atom-name display (elt data 1)))
-	   (reply (get-property window atom)))
-       (format t "32: ~A ~A ~A~%" length atom reply)))))
+  (let ((header)
+	(message))
+    (case format
+      (8
+       (setf header (make-instance 'clx-im-packet-header-fr
+				   :major-opcode (elt data 0)
+				   :minor-opcode (elt data 1)
+				   :header-bytes (elt data 2))
+	     message (cddddr (coerce data 'list))))
+      (32
+       ;; (format t "~%32~%")
+       (let* ((length (elt data 0))
+	      (atom (atom-name display (elt data 1)))
+	      (reply (get-property window atom)))
+	 (format t "32: ~A ~A ~A~%" length atom reply))))
+    (list header message)))
+
+(defun -clx-xim-send-open- (clx-xim)
+  (make-instance 'clx-xim-open-fr
+		 :))
 
 (defun -clx-xim-connect-wait-reply- (clx-xim)
   (let ((display (display clx-xim)))
@@ -469,11 +465,19 @@
        (unless (eq type :_xim_protocol)
 	 (return-from -clx-xim-connect-wait-reply- :action-yield))
        (format t "~%-clx-xim-connect-wait-reply :~% >>~%~A~% ~A~% ~A~% ~A~%" window type format data)
-       (let ((message (-clx-read-xim-message- (display clx-xim)
-					      (accept-win clx-xim)
-					      format
-					      data)))
-	 (format t "~%MESSAGE: ~A~%" message))))))
+       (let ((message)
+	     (header))
+	 (destructuring-bind (header message)
+	     (-clx-read-xim-message- (display clx-xim)
+				     (accept-win clx-xim)
+				     format
+				     data)
+	   (unless (= (major-opcode header) *clx-xim-connect-reply*)
+	     (return-from -clx-xim-connect-wait-reply- :action-yield))
+	   (let ((reply-frame (-clx-xim-read-frame- (make-instance 'clx-im-connect-reply-fr)
+						    message)))
+	     (when (-clx-xim-send-open- clx-xim)
+	       (return-from -clx-xim-connect-wait-reply- :action-accept)))))))))
 
 (defun -clx-xim-preconnect-im- (clx-xim)
   (print "-clx-xim-preconnect-im-")
@@ -527,17 +531,20 @@
 	     (setf (state-phase (connect-state clx-xim)) :xim-connect-fail)
 	     (return-from -clx-xim-preconnect-im-)
 	     (:action-yield
-	      (return-from -clx-xim-preconnect-im- NIL)))))
+	      (return-from -clx-xim-preconnect-im- NIL))))
+	  )
 	 (:xim-connect-connect-wait-reply
-	  (case (-clx-xim-connect-wait-reply- clx-xim)
-	    (:action_accept
-	     (setf (state-phase (connect-state clx-xim)) :xim-connect-done)
-	     (return-from block-preconnect))
-	    (:action-failed
-	     (setf (state-phase (connect-state clx-xim)) :xim-connect-fail)
-	     (return-from block-preconnect))
-	    (:action-yield
-	      (return-from -clx-xim-preconnect-im- NIL)))
+	  (-clx-xim-connect-wait-reply- clx-xim)
+	  (setf (state-phase (connect-state clx-xim)) :xim-connect-done)
+	  ;; (case (-clx-xim-connect-wait-reply- clx-xim)
+	  ;;   (:action_accept
+	  ;;    (setf (state-phase (connect-state clx-xim)) :xim-connect-done)
+	  ;;    (return-from block-preconnect))
+	  ;;   (:action-failed
+	  ;;    (setf (state-phase (connect-state clx-xim)) :xim-connect-fail)
+	  ;;    (return-from block-preconnect))
+	  ;;   (:action-yield
+	  ;;     (return-from -clx-xim-preconnect-im- NIL)))
 	   )))
       (otherwise (return-from -clx-xim-preconnect-im-))))
   (-clx-xim-preconnect-im- clx-xim))

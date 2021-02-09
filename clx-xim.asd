@@ -2,11 +2,12 @@
   :version "0.1.0"
   :author "I-Entropy"
   :license ""
-  :depends-on ("clx")
+  :depends-on ("clx" "flexi-streams")
   :components ((:module "src"
                 :components
-                ((:file "utils")
-		 (:file "clx-xim" :depends-on ("utils")))))
+                ((:file "ximproth")
+		 (:file "utils" :depends-on ("ximproth"))
+		 (:file "clx-xim" :depends-on ("utils" "ximproth")))))
   :description "input method for clx"
   :in-order-to ((test-op (test-op "clx-xim/tests"))))
 
