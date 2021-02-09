@@ -22,7 +22,7 @@
   "doc")
 
 
-(defclass-easy clx-xim ()
+(define-class-easy clx-xim ()
     (;;basic data which should always be valid
      display
      server-name
@@ -73,7 +73,7 @@
      focus-window
      logger))
 
-(defclass-easy connect-state ()
+(define-class-easy connect-state ()
     (state-phase
      callback
      user-data
@@ -81,31 +81,30 @@
      (check-server :initform (make-instance 'check-server)
 		   :accessor check-server)))
 
-(defclass-easy check-server ()
+(define-class-easy check-server ()
     (index
      subphase
      window
      requestor-window))
 
-(defgeneric obj-to-data (obj)
-  (:documentation "convet an obj to data"))
-
 (define-packet clx-im-xpcs-fr-t
-    ((length-of-string-in-bytes)
-     (fr-string)))
+    ((length-of-string-in-bytes :u1)
+     (fr-string :u1)))
 
 (define-packet clx-im-connect-fr
-    ((byte-order 'u1)
-     (pad 'u1)
-     (client-major-protocol-version 'u2)
-     (client-minor-protocol-version 'u2)
-     (protocol-size 'u2)
-     (protocol-items 'strings)))
+    ((byte-order :u1)
+     (pad :u1)
+     (client-major-protocol-version :u2)
+     (client-minor-protocol-version :u2)
+     (protocol-size :u2)
+     (protocol-items :strings))
+  :size-packet
+  )
 
 (define-packet clx-im-packet-header-fr
-    ((major-opcode 'u1)
-     (minor-opcode 'u1)
-     (header-bytes 'u2)))
+    ((major-opcode :u1)
+     (minor-opcode :u1)
+     (header-bytes :u2)))
 
 (defmethod write-obj-to-data ((obj clx-im-connect-fr) data)
   (push () data))
@@ -359,22 +358,23 @@
 	     ;;   )
 	     )
       (progn (format t "~%send-event ~A ~A ~A~%" data window (xlib::lookup-window display window))
-	(send-event (xlib::lookup-window display window)
-		    :client-message
-		    0
-		    :window (xlib::lookup-window display window)
-		    :type protocol-atom
-		    :format 8
-		    :data (padding-data-list data *clx-xim-cm-data-size*)
-		    :propagate-p NIL)
-	(format t "~%send-event~%"))
-      ))
+	     (format t "~%send-event ~A~%" (obj-to-data (first data)))
+
+	     ;; (send-event (xlib::lookup-window display window)
+	     ;; 		 :client-message
+	     ;; 		 0
+	     ;; 		 :window (xlib::lookup-window display window)
+	     ;; 		 :type protocol-atom
+	     ;; 		 :format 8
+	     ;; 		 :data (padding-data-list (data- data) *clx-xim-cm-data-size*)
+	     ;; 		 :propagate-p NIL)
+	     (format t "~%send-event~%"))))
 
 (defun -clx-xim-send-message- (clx-xim data length)
   (format t "~%-clx-xim-send-message-~%")
   (-clx-send-xim-message- (display clx-xim)
 			  :_xim_protocol
-			  (accept-win clx-xim)
+			  (window-id (accept-win clx-xim))
 			  data
 			  length
 			  (concatenate 'string
@@ -569,7 +569,9 @@
 
   (setf (state-phase (connect-state clx-xim)) :xim-connect-check-server)
   ((lambda (check-server)
+     (format t "~A~%" check-server)
      (setf (index check-server) 0)
+     (format t "here")
      (setf (requestor-window check-server) 0)
      (setf (window check-server) 0)
      (setf (subphase check-server) :xim-connect-check-server-prepare))
@@ -578,13 +580,16 @@
 
 
 (defun clx-xim-open (clx-xim clx-xim-open-callback auto-connect user-data)
+  (format t "here1~%")
+  (format t "make ~A~%" (check-server (connect-state clx-xim)))
   (funcall (lambda (connect-state)
 	     (setf (callback connect-state) clx-xim-open-callback
 		   (user-data connect-state) user-data))
 	   (connect-state clx-xim))
   (setf (auto-connect clx-xim) auto-connect)
-  (-clx-xim-open- clx-xim))
-
+  (format t "here2~%")
+  (-clx-xim-open- clx-xim)
+  (format t "here2"))
 
 ;; (defun clx-xim-process (clx-xim)
 ;;   (let (())

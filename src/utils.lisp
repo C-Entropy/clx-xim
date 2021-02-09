@@ -1,8 +1,12 @@
 (defpackage #:utils
   (:use #:cl)
   (:export #:defclass-easy
-	   #:with-gensyms
-	   #:define-packet))
+	   #:data-to-byte
+	   #:define-class-easy
+	   #:define-packet
+	   #:obj-to-data
+	   #:size-packet
+	   #:with-gensyms))
 
 (in-package #:utils)
 
@@ -10,37 +14,59 @@
   `(let ,(loop for n in names collect `(,n (gensym)))
      ,@body))
 
-(defun slot->class-slot (slot)
-  `(,(first slot) :initarg ,(intern (symbol-name (first slot)) "KEYWORD")
-	  :initform NIL
-	  :accessor ,(first slot)))
-
-(defmacro defclass-easy (class-name supper-class slots &optional (doc "None") )
-  "macro for make new class easier(don't support parents yet)"
-  `(defclass ,class-name ,supper-class
-     ,(mapcar #'slot->class-slot slots)
-     (:documentation ,doc)))
-
-
 (defgeneric data-to-byte (data byte)
   (:documentation "doc"))
 
 
-(defmethod data-to-byte (data (byte (eql 'u1)))
+(defmethod data-to-byte (data (byte (eql :u1)))
   (list data))
 
-(defmethod data-to-byte (data (byte (eql 'u2)))
+(defmethod data-to-byte (data (byte (eql :u2)))
   (list (ldb (byte 8 0) data)
 	(ldb (byte 8 8) data)))
 
-(defun slot->byte (slot)
+(defmethod data-to-byte (data (byte (eql :strings)))
+  (list data))
+
+(defgeneric obj-to-data (obj)
+  (:documentation "convet an obj to data"))
+(defgeneric size-frame (obj)
+  (:documentation "doc"))
+
+(defun easy-slot->class-slot (slot)
+  (if (listp slot)
+      slot
+      `(,slot :initarg ,(intern (symbol-name slot) "KEYWORD")
+	      :accessor ,slot)))
+
+(defmacro define-class-easy (class-name supperclasses slots)
+  `(defclass ,class-name ,supperclasses
+     ,(mapcar #'easy-slot->class-slot slots)))
+
+(defun packet-slot->class-slot (slot)
+  `(,(first slot) :initarg ,(intern (symbol-name (first slot)) "KEYWORD")
+	  :initform NIL
+	  :accessor ,(first slot)))
+
+(defun packet-slot->byte (slot)
   `(data-to-byte ,(first slot) ,(second slot)))
 
-(defmacro define-packet (packet-name slots)
+(defmacro define-packet (packet-name ;; static-size-p
+			 slots
+			 &key size-packet
+			 )
   (with-gensyms (objvar)
     `(progn
-       (defclass-easy ,packet-name () ,slots)
+       (defclass ,packet-name NIL
+	 ,(mapcar #'packet-slot->class-slot slots))
 
        (defmethod obj-to-data ((,objvar ,packet-name))
 	 (with-slots ,(mapcar #'first slots) ,objvar
-	   (append ,@(mapcar #'slot->byte slots)))))))
+	   (append ,@(mapcar #'packet-slot->byte slots))))
+
+       ;; (defmethod static-size-p ((,objvar ,packet-name))
+       ;; 	 ,static-size-p)
+
+
+       (defmethod size-packet ((,objvar ,packet-name))
+	 ,size-packet))))
