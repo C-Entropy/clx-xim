@@ -100,10 +100,10 @@
      (client-minor-protocol-version :u2)
      (protocol-size :u2)
      (protocol-items :strings))
+  :opcode *clx-xim-connect*
   :size-packet
   (+ 8
-     (strings-bytes protocol-items))
-  :opcode *clx-xim-connect*)
+     (strings-bytes protocol-items)))
 
 (defmethod obj-to-data :before ((frame clx-im-connect-fr))
   (setf (protocol-size frame) (strings-bytes (protocol-items frame))))
@@ -125,6 +125,22 @@
 (define-packet clx-im-connect-reply-fr
     ((server-major-protocol-version :u2)
      (server-minor-protocol-version :u2)))
+
+(defun clx-im-str-fr-size (string)
+  (1+ (length string)))
+
+(define-packet clx-xim-open-fr
+    ((length-of-string :u1)
+     (s-string :s-string))
+  :opcode *clx-xim-open*
+  :size-packet
+  (align-s-4 (clx-im-str-fr-size s-string) NIL))
+
+(defmethod obj-to-data :before ((frame clx-xim-open-fr))
+  (setf (length-of-string frame) (length (s-string frame))))
+
+(defmethod obj-to-data :around ((frame clx-xim-open-fr))
+  (call-next-method))
 
 (defmethod -clx-xim-read-frame- ((obj clx-im-connect-reply-fr) data)
   (setf (server-major-protocol-version obj) (byte-to-data :u2 data))
@@ -455,8 +471,9 @@
     (list header message)))
 
 (defun -clx-xim-send-open- (clx-xim)
-  (make-instance 'clx-xim-open-fr
-		 :))
+  (-clx-xim-send-frame- clx-xim (make-instance 'clx-xim-open-fr))
+  (setf (open-state clx-xim) :xim-open-wait-open-reply)
+  (print "-clx-xim-send-open-"))
 
 (defun -clx-xim-connect-wait-reply- (clx-xim)
   (let ((display (display clx-xim)))
@@ -534,17 +551,17 @@
 	      (return-from -clx-xim-preconnect-im- NIL))))
 	  )
 	 (:xim-connect-connect-wait-reply
-	  (-clx-xim-connect-wait-reply- clx-xim)
-	  (setf (state-phase (connect-state clx-xim)) :xim-connect-done)
-	  ;; (case (-clx-xim-connect-wait-reply- clx-xim)
-	  ;;   (:action_accept
-	  ;;    (setf (state-phase (connect-state clx-xim)) :xim-connect-done)
-	  ;;    (return-from block-preconnect))
-	  ;;   (:action-failed
-	  ;;    (setf (state-phase (connect-state clx-xim)) :xim-connect-fail)
-	  ;;    (return-from block-preconnect))
-	  ;;   (:action-yield
-	  ;;     (return-from -clx-xim-preconnect-im- NIL)))
+	  ;; (format t ":xim-connect-connect-wait-reply ~A~%" (-clx-xim-connect-wait-reply- clx-xim))
+	  ;; (setf (state-phase (connect-state clx-xim)) :xim-connect-done)
+	  (case (-clx-xim-connect-wait-reply- clx-xim)
+	    (:action-accept
+	     (setf (state-phase (connect-state clx-xim)) :xim-connect-done)
+	     (return-from block-preconnect))
+	    (:action-failed
+	     (setf (state-phase (connect-state clx-xim)) :xim-connect-fail)
+	     (return-from block-preconnect))
+	    (:action-yield
+	      (return-from -clx-xim-preconnect-im- NIL)))
 	   )))
       (otherwise (return-from -clx-xim-preconnect-im-))))
   (-clx-xim-preconnect-im- clx-xim))

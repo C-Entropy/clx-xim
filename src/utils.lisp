@@ -13,7 +13,9 @@
 	   #:with-gensyms
 	   #:align-to
 	   #:align-2
-	   #:align-4))
+	   #:align-4
+	   #:align-s-2
+	   #:align-s-4))
 
 (in-package #:utils)
 
@@ -73,6 +75,9 @@
 		 (string-to-byte (cdr strings) (append (s->b (car strings)) bytes))
 		 (return-from data-to-byte bytes))))
     (string-to-byte data NIL)))
+
+(defmethod data-to-byte (data (byte (eql :s-string)));;single string
+  (coerce (flexi-streams:string-to-octets data) 'list))
 
 (defgeneric obj-to-data (obj)
   (:documentation "convet an obj to data"))
