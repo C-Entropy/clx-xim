@@ -6,8 +6,9 @@
   :components ((:module "src"
                 :components
                 ((:file "ximproth")
+		 (:file "protrocol-handler" :depends-on ("ximproth"))
 		 (:file "utils" :depends-on ("ximproth"))
-		 (:file "clx-xim" :depends-on ("utils" "ximproth")))))
+		 (:file "clx-xim" :depends-on ("utils" "ximproth" "protrocol-handler")))))
   :description "input method for clx"
   :in-order-to ((test-op (test-op "clx-xim/tests"))))
 

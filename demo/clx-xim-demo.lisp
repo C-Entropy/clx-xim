@@ -2,7 +2,8 @@
   (:use #:cl
 	#:xlib
 	#:clx-xim)
-  (:export #:start-demo))
+  (:export #:start-demo
+	   #:clx-xim-client-message))
 
 (in-package #:demo)
 
@@ -31,7 +32,9 @@
     (clx-xim-set-log-handler clx-xim logger)
     (clx-xim-open clx-xim #'open-callback T NIL))
   (defun print-clx-xim ()
-    (format t "~A~%" (im-callback clx-xim))))
+    (format t "~A~%" (im-callback clx-xim)))
+  (defun get-clx-xim ()
+    clx-xim))
 
 
 (let ((display nil)
@@ -75,19 +78,24 @@
     "doc"
     (event-case (display)
       ((:client-message) (window type format data)
-       (format t "window: ~A type:  ~A format: ~A data: ~A~%") window type format data)
-
-      ((:selection-notify) (window selection target property time)
-       (print ":selection-notify")
-       ;; (format t "window: ~A type:  ~A format: ~A data: ~A~%")
+       (print ":client-message")
+       (when (eq type :_xim_protocol)
+	 (clx-xim-client-message (get-clx-xim) format data)
+	 (format t "~%window: ~A type:  ~A format: ~A data: ~A~%" window type format data))
        )
+
+      ;; ((:selection-notify) (window selection target property time)
+      ;;  (print ":selection-notify")
+      ;;  (format t "~%window: ~A selection: ~A target: ~A property: ~A~%" window selection target property)
+      ;;  )
 
       ;; ((:key-press :key-release) (window code)
       ;;  (print "catch you")
       ;;  (print window)
       ;;  (print code))
       )
-    (event-loop))
+    ;; (event-loop)
+    )
 
   (defun start-window ()
     (make-window)
@@ -97,7 +105,7 @@
 				   (:commit-string  . #'commit-string))
 		    :logger #'logger)
 
-    ;; (event-loop)
+    (event-loop)
     ))
 
 

@@ -1,10 +1,12 @@
 (defpackage clx-xim
   (:use #:cl
+	#:protrocol-handler
 	#:ximproth
 	#:utils
 	#:xlib)
   (:import-from #:uiop #:getenv)
   (:export #:make-clx-xim
+	   #:clx-xim-client-message
 	   #:clx-xim-open
 	   #:clx-xim-set-im-callback
 	   #:clx-xim-set-log-handler
@@ -23,69 +25,69 @@
   "doc")
 
 (define-class-easy clx-xim ()
-    (;;basic data which should always be valid
-     display
-     server-name
-     window
-     im-callback
-     user-data
-     root-window
-     ;;some global data
-     xim-sequence
-     byte-order
-     ;;set by -clx-xim-init
-     screen
-     default-screen
-     atoms; ;;add one for SERVER-NAME
-     init
-     ;;set by -clx-xim-get-servers
-     server-atoms
-     n-server-atoms
-     ;;used by -clx-xim-check-server / -clx-xim-connect
-     connect-state
-     ;;-clx-xim-check-server
-     trans-addr
-     im-window
-     ;;and also server-atom
-     im-client-window
-     ;;-clx-xim-connect-wait-
-     major-code
-     minor-code
-     accept-win
-     ;;xim open
-     open-state
-     connect-id
-     imattr
-     icattr
-     extensions
-     onKeys
-     offKeys
-     ;;request
-     current
-     queue
-     nExtensions
-     auto-connect
-     ;;Indicate whether we need a recheck on the new server.
-     recheck
-     yield-recheck
-     ;;some ic values
-     client-window
-     focus-window
-     logger))
+  (;;basic data which should always be valid
+   display
+   server-name
+   window
+   im-callback
+   user-data
+   root-window
+   ;;some global data
+   xim-sequence
+   byte-order
+   ;;set by -clx-xim-init
+   screen
+   default-screen
+   atoms; ;;add one for SERVER-NAME
+   init
+   ;;set by -clx-xim-get-servers
+   server-atoms
+   n-server-atoms
+   ;;used by -clx-xim-check-server / -clx-xim-connect
+   connect-state
+   ;;-clx-xim-check-server
+   trans-addr
+   im-window
+   ;;and also server-atom
+   im-client-window
+   ;;-clx-xim-connect-wait-
+   major-code
+   minor-code
+   accept-win
+   ;;xim open
+   open-state
+   connect-id
+   imattr
+   icattr
+   extensions
+   onKeys
+   offKeys
+   ;;request
+   current
+   queue
+   nExtensions
+   auto-connect
+   ;;Indicate whether we need a recheck on the new server.
+   recheck
+   yield-recheck
+   ;;some ic values
+   client-window
+   focus-window
+   logger))
 
 (define-class-easy connect-state ()
-    (state-phase
-     callback
-     user-data
-     connect-subphase
-     (check-server :initform (make-instance 'check-server)
-		   :accessor check-server)))
+  (state-phase
+   callback
+   user-data
+   connect-subphase
+   (check-server :initform (make-instance 'check-server)
+		 :accessor check-server)))
 
 (define-class-easy check-server ()
-    (index
-     subphase
-     window
-     requestor-window))
+  (index
+   subphase
+   window
+   requestor-window))
 
 ;; (define-packet clx-im-xpcs-fr-t
 ;;     ((length-of-string-in-bytes :u1)
@@ -121,6 +123,15 @@
     ((major-opcode :u1)
      (minor-opcode :u1)
      (header-bytes :u2)))
+
+(defmethod -clx-xim-read-frame- ((obj clx-im-packet-header-fr) data)
+  (setf (major-opcode obj) (byte-to-data :u1 data))
+  (pop data)
+  (setf (minor-opcode obj) (byte-to-data :u1 data))
+  (pop data)
+  (setf (header-bytes obj) (byte-to-data :u2 data))
+  (pop data) (pop data)
+  obj)
 
 (define-packet clx-im-connect-reply-fr
     ((server-major-protocol-version :u2)
@@ -169,7 +180,7 @@
 		 :default-screen screen
 		 :root-window (screen-root screen)
 		 :server-name (clx-xim-make-im-name (or imname
-						       (getenv "XMODIFIERS")))
+							(getenv "XMODIFIERS")))
 		 :connect-state (make-instance 'connect-state
 					       :state-phase :xim-connect-fail)
 		 :init NIL
@@ -288,7 +299,7 @@
 		     :transport
 		     (requestor-window (check-server (connect-state clx-xim)))
 		     :property (find-atom (display clx-xim) :transport))
-    ;; (print (list-properties (requestor-window (check-server (connect-state clx-xim)))))
+  ;; (print (list-properties (requestor-window (check-server (connect-state clx-xim)))))
   )
 
 (defun -clx-xim-check-transport- (address)
@@ -351,14 +362,14 @@
 		       :visual (screen-root-visual (default-screen clx-xim))))
 
   (send-event (im-window clx-xim)
-		     :client-message
-		     0
-		     :window (im-window clx-xim)
-		     :type :_xim_xconnect
-		     :format 32
-		     :data (list (window-id (im-client-window clx-xim))
-				 0 0 0 0)
-		     :propagate-p NIL))
+	      :client-message
+	      0
+	      :window (im-window clx-xim)
+	      :type :_xim_xconnect
+	      :format 32
+	      :data (list (window-id (im-client-window clx-xim))
+			  0 0 0 0)
+	      :propagate-p NIL))
 
 ;; (defun -clx-write-xim-message-header (message major-opcode minor-opcode length swap)
 ;;   )
@@ -377,7 +388,7 @@
 	 *clx-xim-cm-data-size*)
       (progn (intern-atom display atom-name)
 	     (let ((pro (get-property window atom-name :type :string)))
-	       	       (format t "~%-clx-send-xim-message- ~A~%" pro))
+	       (format t "~%-clx-send-xim-message- ~A~%" pro))
 
 	     ;; (when (get-property window atom-name :type :string)
 	     ;;   (format t "~%-clx-send-xim-message- ~A~%" )
@@ -453,21 +464,18 @@
        :action-accept))))
 
 (defun -clx-read-xim-message- (display window format data)
-  (let ((header)
-	(message))
+  (let ((header (make-instance 'clx-im-packet-header-fr))
+	(message)
+	(data (coerce data 'list)))
     (case format
       (8
-       (setf header (make-instance 'clx-im-packet-header-fr
-				   :major-opcode (elt data 0)
-				   :minor-opcode (elt data 1)
-				   :header-bytes (elt data 2))
-	     message (cddddr (coerce data 'list))))
+       (setf header (-clx-xim-read-frame- header data)
+	     message data))
       (32
-       ;; (format t "~%32~%")
-       (let* ((length (elt data 0))
-	      (atom (atom-name display (elt data 1)))
-	      (reply (get-property window atom)))
-	 (format t "32: ~A ~A ~A~%" length atom reply))))
+       (let ((reply (get-property window (atom-name display (cadr data)))))
+	 (when reply
+	   (setf header (-clx-xim-read-frame- header reply)
+		 message reply)))))
     (list header message)))
 
 (defun -clx-xim-send-open- (clx-xim)
@@ -482,19 +490,17 @@
        (unless (eq type :_xim_protocol)
 	 (return-from -clx-xim-connect-wait-reply- :action-yield))
        (format t "~%-clx-xim-connect-wait-reply :~% >>~%~A~% ~A~% ~A~% ~A~%" window type format data)
-       (let ((message)
-	     (header))
-	 (destructuring-bind (header message)
-	     (-clx-read-xim-message- (display clx-xim)
-				     (accept-win clx-xim)
-				     format
-				     data)
-	   (unless (= (major-opcode header) *clx-xim-connect-reply*)
-	     (return-from -clx-xim-connect-wait-reply- :action-yield))
-	   (let ((reply-frame (-clx-xim-read-frame- (make-instance 'clx-im-connect-reply-fr)
-						    message)))
-	     (when (-clx-xim-send-open- clx-xim)
-	       (return-from -clx-xim-connect-wait-reply- :action-accept)))))))))
+       (destructuring-bind (header message)
+	   (-clx-read-xim-message- (display clx-xim)
+				   (accept-win clx-xim)
+				   format
+				   data)
+	 (unless (= (major-opcode header) *clx-xim-connect-reply*)
+	   (return-from -clx-xim-connect-wait-reply- :action-yield))
+	 (let ((reply-frame (-clx-xim-read-frame- (make-instance 'clx-im-connect-reply-fr)
+						  message)))
+	   (when (-clx-xim-send-open- clx-xim)
+	     (return-from -clx-xim-connect-wait-reply- :action-accept))))))))
 
 (defun -clx-xim-preconnect-im- (clx-xim)
   (print "-clx-xim-preconnect-im-")
@@ -561,8 +567,8 @@
 	     (setf (state-phase (connect-state clx-xim)) :xim-connect-fail)
 	     (return-from block-preconnect))
 	    (:action-yield
-	      (return-from -clx-xim-preconnect-im- NIL)))
-	   )))
+	     (return-from -clx-xim-preconnect-im- NIL)))
+	  )))
       (otherwise (return-from -clx-xim-preconnect-im-))))
   (-clx-xim-preconnect-im- clx-xim))
 
@@ -618,3 +624,14 @@
 ;; (defun clx-xim-process (clx-xim)
 ;;   (let (())
 ;;     (event-case ())))
+
+(defun clx-xim-client-message (clx-xim format data)
+  (destructuring-bind (header message)
+      (-clx-read-xim-message- (display clx-xim) (im-client-window clx-xim) format data)
+    (-clx-xim-handle-message- clx-xim header message (major-opcode header))
+    ;; (format t "~%major-opcode ~A~%" (major-opcode header))
+    ;; (format t "~%minor-opcode ~A~%" (minor-opcode header))
+    ;; (format t "~%header-bytes ~A~%" (header-bytes header))
+    ;; (format t "~%header: ~A message: ~A~%" header message)
+    )
+  )
