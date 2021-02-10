@@ -1,6 +1,5 @@
 (defpackage clx-xim
   (:use #:cl
-	#:protrocol-handler
 	#:ximproth
 	#:utils
 	#:xlib)
@@ -88,77 +87,6 @@
    subphase
    window
    requestor-window))
-
-;; (define-packet clx-im-xpcs-fr-t
-;;     ((length-of-string-in-bytes :u1)
-;;      (fr-string :u1)))
-
-(defgeneric -clx-xim-read-frame- (obj data))
-
-(define-packet clx-im-connect-fr
-    ((byte-order :u1)
-     (pad :u1)
-     (client-major-protocol-version :u2)
-     (client-minor-protocol-version :u2)
-     (protocol-size :u2)
-     (protocol-items :strings))
-  :opcode *clx-xim-connect*
-  :size-packet
-  (+ 8
-     (strings-bytes protocol-items)))
-
-(defmethod obj-to-data :before ((frame clx-im-connect-fr))
-  (setf (protocol-size frame) (strings-bytes (protocol-items frame))))
-
-;; (obj-to-data (make-instance 'clx-im-connect-fr
-;; 			    :byte-order "l"
-;; 			    :pad 0
-;; 			    :client-major-protocol-version 0
-;; 			    :client-minor-protocol-version 0
-;; 			    ;; :protocol-size 0
-;; 			    ;; :protocol-items '("0" "a")
-;; 			    ))
-
-(define-packet clx-im-packet-header-fr
-    ((major-opcode :u1)
-     (minor-opcode :u1)
-     (header-bytes :u2)))
-
-(defmethod -clx-xim-read-frame- ((obj clx-im-packet-header-fr) data)
-  (setf (major-opcode obj) (byte-to-data :u1 data))
-  (pop data)
-  (setf (minor-opcode obj) (byte-to-data :u1 data))
-  (pop data)
-  (setf (header-bytes obj) (byte-to-data :u2 data))
-  (pop data) (pop data)
-  obj)
-
-(define-packet clx-im-connect-reply-fr
-    ((server-major-protocol-version :u2)
-     (server-minor-protocol-version :u2)))
-
-(defun clx-im-str-fr-size (string)
-  (1+ (length string)))
-
-(define-packet clx-xim-open-fr
-    ((length-of-string :u1)
-     (s-string :s-string))
-  :opcode *clx-xim-open*
-  :size-packet
-  (align-s-4 (clx-im-str-fr-size s-string) NIL))
-
-(defmethod obj-to-data :before ((frame clx-xim-open-fr))
-  (setf (length-of-string frame) (length (s-string frame))))
-
-(defmethod obj-to-data :around ((frame clx-xim-open-fr))
-  (call-next-method))
-
-(defmethod -clx-xim-read-frame- ((obj clx-im-connect-reply-fr) data)
-  (setf (server-major-protocol-version obj) (byte-to-data :u2 data))
-  (pop data)
-  (pop data)
-  (setf (server-minor-protocol-version obj) (byte-to-data :u2 data))
-  obj)
 
 (defun clx-xim-make-im-name (im-name)
   "make im name using im-name, cutting down '@im=', then return the left part"
@@ -465,17 +393,23 @@
 
 (defun -clx-read-xim-message- (display window format data)
   (let ((header (make-instance 'clx-im-packet-header-fr))
-	(message)
-	(data (coerce data 'list)))
+	(message))
+    ;; (format t "~%>>>-clx-read-xim-message- ~A~%" (symbol- 'data))
     (case format
       (8
-       (setf header (-clx-xim-read-frame- header data)
+       (setf header (-clx-xim-read-frame- data :clx-im-packet-header-fr)
 	     message data))
       (32
-       (let ((reply (get-property window (atom-name display (cadr data)))))
+       (let ((reply (list->vector
+		     (get-property
+		      window
+		      (atom-name
+		       display
+		       (aref data (- (length data) 2)))))))
 	 (when reply
-	   (setf header (-clx-xim-read-frame- header reply)
+	   (setf header (-clx-xim-read-frame- reply :clx-im-packet-header-fr)
 		 message reply)))))
+    (format t "~%>>>-clx-read-xim-message-~%")
     (list header message)))
 
 (defun -clx-xim-send-open- (clx-xim)
@@ -494,11 +428,11 @@
 	   (-clx-read-xim-message- (display clx-xim)
 				   (accept-win clx-xim)
 				   format
-				   data)
+				   (list->vector (coerce data 'list)))
 	 (unless (= (major-opcode header) *clx-xim-connect-reply*)
 	   (return-from -clx-xim-connect-wait-reply- :action-yield))
-	 (let ((reply-frame (-clx-xim-read-frame- (make-instance 'clx-im-connect-reply-fr)
-						  message)))
+	 (let ((reply-frame (-clx-xim-read-frame- message :clx-im-connect-reply-fr)))
+	   ;; (format t "wait-reply<><><><>")
 	   (when (-clx-xim-send-open- clx-xim)
 	     (return-from -clx-xim-connect-wait-reply- :action-accept))))))))
 
@@ -627,7 +561,8 @@
 
 (defun clx-xim-client-message (clx-xim format data)
   (destructuring-bind (header message)
-      (-clx-read-xim-message- (display clx-xim) (im-client-window clx-xim) format data)
+      (-clx-read-xim-message- (display clx-xim) (im-client-window clx-xim) format
+			      (list->vector (coerce data 'list)))
     (-clx-xim-handle-message- clx-xim header message (major-opcode header))
     ;; (format t "~%major-opcode ~A~%" (major-opcode header))
     ;; (format t "~%minor-opcode ~A~%" (minor-opcode header))
