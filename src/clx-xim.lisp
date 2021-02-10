@@ -56,8 +56,8 @@
    ;;xim open
    open-state
    connect-id
-   imattr
-   icattr
+   (imattr :initform (make-hash-table :test #'equal) :accessor imattr)
+   (icattr :initform (make-hash-table :test #'equal) :accessor icattr)
    extensions
    onKeys
    offKeys
