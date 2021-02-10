@@ -1,0 +1,84 @@
+(in-package #:clx-xim)
+(define-packet clx-im-connect-fr
+    ((byte-order :u1)
+     (pad :u1)
+     (client-major-protocol-version :u2)
+     (client-minor-protocol-version :u2)
+     (protocol-size :u2)
+     (protocol-items :strings))
+  :opcode *clx-xim-connect*
+  :size-packet
+  (+ 8
+     (strings-bytes protocol-items)))
+
+(defmethod obj-to-data :before ((frame clx-im-connect-fr))
+  (setf (protocol-size frame) (strings-bytes (protocol-items frame))))
+
+(define-packet clx-im-packet-header-fr
+    ((major-opcode :u1)
+     (minor-opcode :u1)
+     (header-bytes :u2)))
+
+;; (defmethod -clx-xim-read-frame- (data (type (eql :clx-im-packet-header-fr)) &key)
+;;   (setf (major-opcode obj) (-clx-xim-read-frame- :u1 data))
+;;   (setf (minor-opcode obj) (-clx-xim-read-frame- :u1 data))
+;;   (setf (header-bytes obj) (-clx-xim-read-frame- :u2 data))
+;;   obj)
+
+(define-packet clx-im-connect-reply-fr
+    ((server-major-protocol-version :u2)
+     (server-minor-protocol-version :u2)))
+
+(defun clx-im-str-fr-size (string)
+  (1+ (length string)))
+
+(define-packet clx-xim-open-fr
+    ((length-of-string :u1)
+     (s-string :s-string))
+  :opcode *clx-xim-open*
+  :size-packet
+  (align-s-4 (clx-im-str-fr-size s-string) NIL))
+
+(defmethod obj-to-data :before ((frame clx-xim-open-fr))
+  (setf (length-of-string frame) (length (s-string frame))))
+
+(defmethod obj-to-data :around ((frame clx-xim-open-fr))
+  (call-next-method))
+
+(define-packet clx-im-ximattr-fr
+    ((attribute-id :u2)
+     (type-of-value :u2)
+     (length-of-im-attribute :u2)
+     (im-attribute :s-string :length length-of-im-attribute)
+     (pad :bytes :length (pad-4 (+ 6
+				     length-of-im-attribute))))
+  :size-packet (align-s-4 (+ 6
+			     length-of-im-attribute)
+			  NIL))
+
+(define-packet clx-im-xicattr-fr
+    ((attribute-id :u2)
+     (type-of-value :u2)
+     (length-of-ic-attribute :u2)
+     (ic-attribute :s-string :length length-of-ic-attribute)
+     (pad :bytes :length (pad-4 (+ 6
+				     length-of-ic-attribute))))
+  :size-packet (align-s-4 (+ 6
+			     length-of-ic-attribute)
+			  NIL))
+
+(define-packet clx-im-open-reply-fr
+    ((input-method-id :u2)
+     (im-size :u2)
+     (im-ximattr :clx-im-ximattr-fr :bytes im-size)
+     (ic-size :u2)
+     (pad :u2)
+     (ic-ximattr :clx-im-xicattr-fr :bytes ic-size)))
+
+(define-packet clx-im-query-extension
+    ((input-method-id :u2)
+     (byte-len :u2)
+     (ext :strings :length byte-len)
+     (pad :bytes :length (pad-4 byte-len)))
+  :size-packet (+ 4
+		  (align-s-4 byte-len NIL)))

@@ -9,9 +9,18 @@
   ;;   (return-from -clx-xim-handle-message- NIL))
   )
 
-(defun -clx-xim-send-query-extension (clx-xim)
+(defun make-default-ext ()
+  (make-instance 'clx-im-ext
+		 :name "XIM_EXT_MOVE"
+		 :major-opcode
+		 :minor-opcode ))
 
-  )
+(defun -clx-xim-send-query-extension (clx-xim)
+  (let ((query-ext (make-instance 'clx-im-query-extension
+				  :input-method-id (connect-id clx-xim)
+				  :ext (make-default-ext)))
+	)
+    ))
 
 
 (defmethod -clx-xim-handle-message- (clx-xim hdr data (type (eql *clx-xim-open-reply*)))

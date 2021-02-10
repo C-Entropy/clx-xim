@@ -54,7 +54,13 @@
    #:*clx-xim-preedit-done*
    #:*clx-xim-status-start*
    #:*clx-xim-status-draw*
-   #:*clx-xim-status-done*))
+   #:*clx-xim-status-done*
+
+   ;; Minor Protocol Number for Extension Protocol
+   #:*clx-xim-extension*
+   #:*clx-xim-ext-set-event-mask*
+   #:*clx-xim-ext-forward-keyevent*
+   #:*clx-xim-ext-move*))
 
 (in-package #:ximproth)
 
@@ -119,3 +125,10 @@
 (defparameter *clx-xim-status-start* 79)
 (defparameter *clx-xim-status-draw* 80)
 (defparameter *clx-xim-status-done* 81)
+
+
+;; Minor Protocol Number for Extension Protocol
+(defparameter *clx-xim-extension* 128)
+(defparameter *clx-xim-ext-set-event-mask* #x30)
+(defparameter *clx-xim-ext-forward-keyevent* #x32)
+(defparameter *clx-xim-ext-move* #x33)
