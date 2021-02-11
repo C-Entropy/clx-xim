@@ -24,6 +24,12 @@
     (-clx-xim-send-frame- clx-xim query-ext)
     (setf (open-state clx-xim) :xim-open-wait-extension-reply)))
 
+(defun -clx-xim-send-encoding-negotiation- (clx-xim)
+  (let ((encoding-negotiation (make-instance 'clx-im-encoding-negotiation-fr
+					     :input-method-id (connect-id clx-xim)
+					     :encodings '("COMPOUND_TEXT"))))
+    (format t "-clx-xim-send-encoding-negotiation-: ~A~%" (obj-to-data encoding-negotiation))
+    (-clx-xim-send-frame- clx-xim encoding-negotiation)))
 
 (defmethod -clx-xim-handle-message- (clx-xim header data (type (eql *clx-xim-open-reply*)))
   (unless (eq (open-state clx-xim) :xim-open-wait-open-reply)
@@ -52,3 +58,9 @@
       (push (cons (extension-major-opcode item) (extension-minor-opcode item))
 	    (extensions clx-xim))))
   (-clx-xim-send-encoding-negotiation- clx-xim))
+
+(defmethod -clx-xim-handle-message- (clx-xim header data (type (eql *clx-xim-encoding-negotiation-reply*)))
+  (unless (eq (open-state clx-xim) :xim-open-wait-extension-reply)
+    (return-from -clx-xim-handle-message- NIL))
+  (format t "reply- data ~A~% " data)
+  )

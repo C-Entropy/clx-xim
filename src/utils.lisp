@@ -333,7 +333,9 @@
 	      "no size-packet defined"))
 
        (defmethod clx-proto-frame-opcode ((,objvar ,packet-name))
-	 ,opcode)
+	 ,(if opcode
+	      opcode
+	      :opcode-not-set))
 
        (defmethod -clx-xim-read-frame- (,datavar (,typevar (eql ,(get-keyword packet-name))) &key)
 	 (let ((,objvar (make-instance ',packet-name)))

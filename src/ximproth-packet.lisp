@@ -112,3 +112,27 @@
     ((input-method-id :u2)
      (ext-size :u2)
      (ext :clx-im-ext-fr :bytes ext-size)))
+
+
+(define-packet clx-im-encoding-negotiation-fr
+    ((input-method-id :u2)
+     (size :u2 :n-data (s-strings-bytes encodings))
+     (encodings :s-strings)
+     (pad :pads :length (pad-4 (s-strings-bytes encodings)))
+     (size-detail :u2 :n-data (s-strings-bytes encoding-info))
+     (pad-1 :pads :length 2)
+     (encoding-info :s-strings)
+     )
+  :opcode *clx-xim-encoding-negotiation*
+  :size-packet
+  (+ 8 (align-s-4 (s-strings-bytes encodings) NIL)
+     (s-strings-bytes encoding-info)))
+
+(setf a (make-instance 'clx-im-encoding-negotiation-fr
+		       :input-method-id 94
+		       :encodings '("COMPOUND_TEXT")))
+
+(clx-proto-frame-opcode a)
+(obj-to-data a)
+
+;; (data-to-byte NIL :u2)
