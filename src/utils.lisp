@@ -16,6 +16,7 @@
 	   #:pad-4
 	   #:size-packet
 	   #:strings-bytes
+	   #:s-strings-bytes
 	   #:with-gensyms
 	   #:align-to
 	   #:align-2
@@ -99,6 +100,15 @@
 (defmethod data-to-byte (data (byte (eql :s-string)) &key);;single string
   (coerce (flexi-streams:string-to-octets data) 'list))
 
+(defmethod data-to-byte (data (byte (eql :s-strings)) &key);;multiple STR
+  (let ((result NIL))
+    (dolist (item data)
+      (setf result (cons (length item)
+			 (append
+			  (coerce (flexi-streams:string-to-octets item) 'list)
+			  result))))
+    result))
+
 (defmethod data-to-byte (data (byte (eql :strings)) &key length)
   (labels ((s->b (s)
 	     (append (data-to-byte (length s) :u2)
@@ -108,7 +118,6 @@
 		 (string-to-byte (cdr strings) (append (s->b (car strings)) bytes))
 		 (return-from data-to-byte bytes))))
     (string-to-byte data NIL)))
-
 
 (defun load-bytes (length bytes)
   (let ((data 0))
@@ -177,13 +186,25 @@
 (defun strings-bytes (strings)
   (labels ((s-length (strings len)
 	     (if strings
-		 (s-length (cdr strings) (align-s-4 (+ 2 len (length (car strings)))
-						    NIL))
+		 (s-length (cdr strings) (+ len
+					    (align-s-4 (+ 2 (length (car strings)))
+						       NIL)))
 		 (return-from strings-bytes len))))
     (s-length strings 0)))
 
+(defun s-strings-bytes (strings)
+  (labels ((s-length (strings len)
+	     (if strings
+		 (s-length (cdr strings) (+ len
+					    1
+					    (length (car strings))))
+		 (return-from s-strings-bytes len))))
+    (s-length strings 0)))
+
 (defmethod byte-to-data ((type (eql :bytes)) data byte &key length)
-  (load-bytes length byte))
+  (if (= 0 length)
+      NIL
+      (load-bytes length byte)))
 
 (defun read-byte-n-seq (byte n)
   (if (= 0 n)
@@ -305,8 +326,10 @@
        ;; 	 ,static-size-p)
 
        (defmethod size-packet ((,objvar ,packet-name))
-	 (with-slots ,(mapcar #'first slots) ,objvar
-	   ,size-packet))
+	 ,(if size-packet
+	      `(with-slots ,(mapcar #'first slots) ,objvar
+		,size-packet)
+	      "no size-packet defined"))
 
        (defmethod clx-proto-frame-opcode ((,objvar ,packet-name))
 	 ,opcode)

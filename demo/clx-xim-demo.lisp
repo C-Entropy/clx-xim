@@ -78,9 +78,9 @@
     "doc"
     (event-case (display)
       ((:client-message) (window type format data)
-       (print ":client-message")
+       ;; (print ":client-message")
        (when (eq type :_xim_protocol)
-	 (format t "~%window: ~A type:  ~A format: ~A data: ~A~%" window type format data)
+	 ;; (format t "~%window: ~A type:  ~A format: ~A data: ~A~%" window type format data)
 	 (clx-xim-client-message (get-clx-xim) format data)))
 
       ;; ((:selection-notify) (window selection target property time)

@@ -77,15 +77,15 @@
 
 (define-packet clx-im-query-extension-fr
     ((input-method-id :u2)
-     (byte-len :u2 :n-data (strings-bytes ext))
-     (ext :strings :length byte-len)
-     (pad :pads :length (pad-4 (strings-bytes ext))))
+     (byte-len :u2 :n-data (s-strings-bytes ext))
+     (ext :s-strings)
+     (pad :pads :length (pad-4 (s-strings-bytes ext))))
   :opcode *clx-xim-query-extension*
   :size-packet (align-s-4 (+ 4
-			     (strings-bytes ext))
+			     (s-strings-bytes ext))
 			  NIL))
 
-(define-packet clx-im-ext-fr
+(define-packet encodinginfo;;should be
     ((info-length :u2)
      (ext-info :s-string :length info-length)
      (pad-0 :bytes :length (pad-4 (+ 2 info-length)))
@@ -99,7 +99,17 @@
   :size-packet (align-s-4 (+ 6 info-length name-length)
 			  NIL))
 
+(define-packet clx-im-ext-fr
+    ((extension-major-opcode :u1)
+     (extension-minor-opcode :u1)
+     (name-length :u2)
+     (ext-name :s-string :length name-length)
+     (pad-1 :bytes :length (pad-4 name-length)))
+  :size-packet ())
+
 (define-packet clx-im-query-extension-reply-fr
     ((input-method-id :u2)
      (ext-size :u2)
      (ext :clx-im-ext-fr :bytes ext-size)))
+
+(-clx-xim-read-frame- (make-array 20 :initial-contents '(69 86 79 77 95 84 88 69 95 77 73 88 0 12 51 128 0 16 0 91)    :fill-pointer 20) :clx-im-query-extension-reply-fr)

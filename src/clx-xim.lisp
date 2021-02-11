@@ -429,7 +429,7 @@
 	 (when reply
 	   (setf header (-clx-xim-read-frame- reply :clx-im-packet-header-fr)
 		 message reply)))))
-    (format t "~%>>>-clx-read-xim-message-~%")
+    ;; (format t "~%>>>-clx-read-xim-message-~%")
     (list header message)))
 
 (defun -clx-xim-send-open- (clx-xim)
@@ -583,6 +583,8 @@
   (destructuring-bind (header message)
       (-clx-read-xim-message- (display clx-xim) (im-client-window clx-xim) format
 			      (list->vector (coerce data 'list)))
+    ;; (print "-clx-xim-handle-message-")
+    ;; (print (major-opcode header))
     (-clx-xim-handle-message- clx-xim header message (major-opcode header))
     ;; (format t "~%major-opcode ~A~%" (major-opcode header))
     ;; (format t "~%minor-opcode ~A~%" (minor-opcode header))
