@@ -138,6 +138,7 @@
   (if (listp slot)
       slot
       `(,slot :initarg ,(intern (symbol-name slot) "KEYWORD")
+	      :initform NIL
 	      :accessor ,slot)))
 
 (defmacro define-class-easy (class-name supperclasses slots)

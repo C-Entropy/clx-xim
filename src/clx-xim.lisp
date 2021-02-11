@@ -64,7 +64,6 @@
    ;;request
    current
    queue
-   nExtensions
    auto-connect
    ;;Indicate whether we need a recheck on the new server.
    recheck

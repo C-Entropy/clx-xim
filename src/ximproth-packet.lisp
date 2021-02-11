@@ -105,11 +105,10 @@
      (name-length :u2)
      (ext-name :s-string :length name-length)
      (pad-1 :bytes :length (pad-4 name-length)))
-  :size-packet ())
+  :size-packet (+ 4
+		  (align-s-4 name-length NIL)))
 
 (define-packet clx-im-query-extension-reply-fr
     ((input-method-id :u2)
      (ext-size :u2)
      (ext :clx-im-ext-fr :bytes ext-size)))
-
-(-clx-xim-read-frame- (make-array 20 :initial-contents '(69 86 79 77 95 84 88 69 95 77 73 88 0 12 51 128 0 16 0 91)    :fill-pointer 20) :clx-im-query-extension-reply-fr)
