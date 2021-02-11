@@ -70,26 +70,36 @@
   `(let ,(loop for n in names collect `(,n (gensym)))
      ,@body))
 
-(defgeneric data-to-byte (data byte)
+(defgeneric data-to-byte (data byte &key)
   (:documentation "doc"))
 
-(defmethod data-to-byte (data (byte (eql :u1)))
+(defmethod data-to-byte (data (byte (eql :u1)) &key)
   (list data))
 
-(defmethod data-to-byte (data (byte (eql :u2)))
+(defmethod data-to-byte (data (byte (eql :u2)) &key n-data)
+  (format t "~%~A~%" n-data)
+  (when n-data
+    (setf data n-data))
   (list (ldb (byte 8 0) data)
 	(ldb (byte 8 8) data)))
 
-(defun load-bytes (length bytes)
-  (let ((data 0))
-    (dotimes (count length)
-      (setf (ldb (byte 8 (* 8 count)) data) (vector-pop bytes)))
-    data))
 
-(defmethod byte-to-data ((type (eql :bytes)) data byte &key length)
-  (load-bytes length byte))
+(defmethod data-to-byte (data (byte (eql :bytes)) &key length)
+  (let ((list NIL))
+    (dotimes (c length)
+      (push 0 list))
+    list))
 
-(defmethod data-to-byte (data (byte (eql :strings)))
+(defmethod data-to-byte (data (byte (eql :pads)) &key length)
+  (let ((list NIL))
+    (dotimes (c length)
+      (push 0 list))
+    list))
+
+(defmethod data-to-byte (data (byte (eql :s-string)) &key);;single string
+  (coerce (flexi-streams:string-to-octets data) 'list))
+
+(defmethod data-to-byte (data (byte (eql :strings)) &key length)
   (labels ((s->b (s)
 	     (append (data-to-byte (length s) :u2)
 		   (coerce (flexi-streams:string-to-octets s) 'list)))
@@ -99,8 +109,12 @@
 		 (return-from data-to-byte bytes))))
     (string-to-byte data NIL)))
 
-(defmethod data-to-byte (data (byte (eql :s-string)));;single string
-  (coerce (flexi-streams:string-to-octets data) 'list))
+
+(defun load-bytes (length bytes)
+  (let ((data 0))
+    (dotimes (count length)
+      (setf (ldb (byte 8 (* 8 count)) data) (vector-pop bytes)))
+    data))
 
 (defgeneric obj-to-data (obj)
   (:documentation "convet an obj to data"))
@@ -127,38 +141,38 @@
 	  :accessor ,(first slot)))
 
 (defun packet-slot->byte (slot)
-  `(data-to-byte ,(first slot) ,(second slot)))
+  `(data-to-byte ,@slot))
 
 (defun byte->packet-slot (slot byte)
   `(setf ,(car slot) (byte-to-data ,(second slot) ,byte)
 	 ,byte (pop byte)))
 
-(defmacro define-packet (packet-name ;; static-size-p
-			 slots
-			 &key size-packet opcode)
-  (with-gensyms (objvar datavar)
-    `(progn
-       (defclass ,packet-name NIL
-	 ,(mapcar #'packet-slot->class-slot slots))
+;; (defmacro define-packet (packet-name ;; static-size-p
+;; 			 slots
+;; 			 &key size-packet opcode)
+;;   (with-gensyms (objvar datavar)
+;;     `(progn
+;;        (defclass ,packet-name NIL
+;; 	 ,(mapcar #'packet-slot->class-slot slots))
 
-       (defmethod obj-to-data ((,objvar ,packet-name))
-	 (with-slots ,(mapcar #'first slots) ,objvar
-	   (append ,@(mapcar #'packet-slot->byte slots))))
+;;        (defmethod obj-to-data ((,objvar ,packet-name))
+;; 	 (with-slots ,(mapcar #'first slots) ,objvar
+;; 	   (append ,@(mapcar #'packet-slot->byte slots))))
 
-       ;; (defmethod static-size-p ((,objvar ,packet-name))
-       ;; 	 ,static-size-p)
+;;        ;; (defmethod static-size-p ((,objvar ,packet-name))
+;;        ;; 	 ,static-size-p)
 
 
-       (defmethod size-packet ((,objvar ,packet-name))
-	 (with-slots ,(mapcar #'first slots) ,objvar
-	   ,size-packet))
+;;        (defmethod size-packet ((,objvar ,packet-name))
+;; 	 (with-slots ,(mapcar #'first slots) ,objvar
+;; 	   ,size-packet))
 
-       (defmethod clx-proto-frame-opcode ((,objvar ,packet-name))
-	 ,opcode)
-       (defmethod data-to-obj ((,objvar ,packet-name) ,datavar)
-	 (with-slots ,(mapcar #'first slots) ,objvar
-	   ,@data-to-obj
-	   )))))
+;;        (defmethod clx-proto-frame-opcode ((,objvar ,packet-name))
+;; 	 ,opcode)
+;;        (defmethod data-to-obj ((,objvar ,packet-name) ,datavar)
+;; 	 (with-slots ,(mapcar #'first slots) ,objvar
+;; 	   ,@data-to-obj
+;; 	   )))))
 
 (defun strings-bytes (strings)
   (labels ((s-length (strings len)
@@ -167,6 +181,9 @@
 						    NIL))
 		 (return-from strings-bytes len))))
     (s-length strings 0)))
+
+(defmethod byte-to-data ((type (eql :bytes)) data byte &key length)
+  (load-bytes length byte))
 
 (defun read-byte-n-seq (byte n)
   (if (= 0 n)
@@ -188,26 +205,58 @@
 (defmethod -clx-xim-read-frame- (byte (type (eql :bytes)) &key length)
   (load-bytes length byte))
 
-(defmethod -clx-xim-read-frame- :around (byte (type (eql :clx-im-ximattr-fr)) &key bytes)
-  (let ((frames NIL))
-    (labels ((read-frame ()
-	       (push (call-next-method) frames)
-	       (setf bytes (- bytes (size-packet (car frames))))
-	       (when (> bytes 0)
-		 (read-frame))))
-      (read-frame))
-    frames))
+;; (defmethod -clx-xim-read-frame- :around (byte (type (eql :clx-im-ximattr-fr)) &key bytes)
+;;   (let ((frames NIL))
+;;     (labels ((read-frame ()
+;; 	       (push (call-next-method) frames)
+;; 	       (setf bytes (- bytes (size-packet (car frames))))
+;; 	       (when (> bytes 0)
+;; 		 (read-frame))))
+;;       (read-frame))
+;;     frames))
 
-(defmethod -clx-xim-read-frame- :around (byte (type (eql :clx-im-xicattr-fr)) &key bytes)
-  (let ((frames NIL))
-    (labels ((read-frame ()
-	       (push (call-next-method) frames)
-	       (setf bytes (- bytes (size-packet (car frames))))
-	       (when (> bytes 0)
-		 (read-frame))))
-      (read-frame))
-    frames))
+;; (defmethod -clx-xim-read-frame- :around (byte (type (eql :clx-im-xicattr-fr)) &key bytes)
+;;   (let ((frames NIL))
+;;     (labels ((read-frame ()
+;; 	       (push (call-next-method) frames)
+;; 	       (setf bytes (- bytes (size-packet (car frames))))
+;; 	       (when (> bytes 0)
+;; 		 (read-frame))))
+;;       (read-frame))
+;;     frames))
 
+
+
+
+(defmacro define-read-around (obj-type)
+  (with-gensyms (framevar)
+    `(defmethod -clx-xim-read-frame- :around (byte (type (eql ,obj-type)) &key bytes)
+       (let ((,framevar NIL))
+	 (labels ((read-frame ()
+		    (format t "bytes: ~A~%" bytes)
+		    (push (call-next-method) ,framevar)
+		    (setf bytes (- bytes 4 (size-packet (car ,framevar))))
+		    (when (> bytes 0)
+		      (read-frame))
+		    ))
+	   (read-frame))
+	 ,framevar))))
+
+(define-read-around :clx-im-ximattr-fr)
+(define-read-around :clx-im-xicattr-fr)
+(define-read-around :clx-im-ext-fr)
+
+
+
+;; (defmethod -clx-xim-read-frame- :around (byte (type (eql :clx-im-ext-fr)) &key bytes)
+;;   (let ((frames NIL))
+;;     (labels ((read-frame ())
+;; 	     (push (call-next-method frames) frames)
+;; 	     (sef bytes (- bytes (size-packet (car frames))))
+;; 	     (when (> bytes 0)
+;; 	       (read-frame))))
+;;     (read-frame))
+;;   frames))
 
 ;; (defmethod -clx-xim-read-frame- (byte (type (eql :clx-im-xicattr-fr)) &key)
 ;;    (let ((obj (make-instance 'clx-im-xicattr-fr)))
@@ -254,7 +303,6 @@
 
        ;; (defmethod static-size-p ((,objvar ,packet-name))
        ;; 	 ,static-size-p)
-
 
        (defmethod size-packet ((,objvar ,packet-name))
 	 (with-slots ,(mapcar #'first slots) ,objvar

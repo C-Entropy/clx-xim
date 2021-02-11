@@ -309,14 +309,34 @@
 
 
 (defun -clx-send-xim-message- (display protocol-atom window data length atom-name)
-  (format t "length ~A ~A~%" length *clx-xim-header-size*)
+  ;; (format t "length ~A ~A~%" length *clx-xim-header-size*)
+  (format t "atom-name ~A~%" atom-name)
+  (format t "data ~A~%" data)
   (unless data
     (return-from -clx-send-xim-message- NIL))
   (if (> (+ length *clx-xim-header-size*)
 	 *clx-xim-cm-data-size*)
       (progn (intern-atom display atom-name)
-	     (let ((pro (get-property window atom-name :type :string)))
-	       (format t "~%-clx-send-xim-message- ~A~%" pro))
+	     (change-property window atom-name
+			      data :string 8
+				   :mode :append)
+	     (print (list-properties window))
+	     (print atom-name)
+	     (print (find-atom display atom-name))
+	     (send-event window
+			 :client-message
+			 0
+			 :window window
+			 :type protocol-atom
+			 :format 32
+			 :data (list length
+				     (find-atom display atom-name)
+				     0 0 0))
+	     ;; (let ((pro (list-properties window)
+	     ;; 	     ;; (get-property window atom-name :type :string
+	     ;; 		;; 	      )
+	     ;; 		))
+	     ;;   (format t "~%-clx-send-xim-message- ~A~%" pro))
 
 	     ;; (when (get-property window atom-name :type :string)
 	     ;;   (format t "~%-clx-send-xim-message- ~A~%" )
@@ -354,9 +374,9 @@
 			  (accept-win clx-xim)
 			  data
 			  length
-			  (concatenate 'string
+			  (get-keyword (concatenate 'string
 				       "_client" (write-to-string (connect-id clx-xim))
-				       "_" (write-to-string (xim-sequence clx-xim))))
+				       "_" (write-to-string (xim-sequence clx-xim)))))
   (setf (xim-sequence clx-xim) (1+ (xim-sequence clx-xim))))
 
 (defun -clx-xim-send-frame- (clx-xim frame)

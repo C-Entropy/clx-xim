@@ -80,9 +80,8 @@
       ((:client-message) (window type format data)
        (print ":client-message")
        (when (eq type :_xim_protocol)
-	 (clx-xim-client-message (get-clx-xim) format data)
-	 (format t "~%window: ~A type:  ~A format: ~A data: ~A~%" window type format data))
-       )
+	 (format t "~%window: ~A type:  ~A format: ~A data: ~A~%" window type format data)
+	 (clx-xim-client-message (get-clx-xim) format data)))
 
       ;; ((:selection-notify) (window selection target property time)
       ;;  (print ":selection-notify")
@@ -94,7 +93,7 @@
       ;;  (print window)
       ;;  (print code))
       )
-    ;; (event-loop)
+    (event-loop)
     )
 
   (defun start-window ()

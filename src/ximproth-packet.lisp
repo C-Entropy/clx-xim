@@ -75,10 +75,31 @@
      (pad :u2)
      (ic-ximattr :clx-im-xicattr-fr :bytes ic-size)))
 
-(define-packet clx-im-query-extension
+(define-packet clx-im-query-extension-fr
     ((input-method-id :u2)
-     (byte-len :u2)
+     (byte-len :u2 :n-data (strings-bytes ext))
      (ext :strings :length byte-len)
-     (pad :bytes :length (pad-4 byte-len)))
-  :size-packet (+ 4
-		  (align-s-4 byte-len NIL)))
+     (pad :pads :length (pad-4 (strings-bytes ext))))
+  :opcode *clx-xim-query-extension*
+  :size-packet (align-s-4 (+ 4
+			     (strings-bytes ext))
+			  NIL))
+
+(define-packet clx-im-ext-fr
+    ((info-length :u2)
+     (ext-info :s-string :length info-length)
+     (pad-0 :bytes :length (pad-4 (+ 2 info-length)))
+
+     (extension-major-opcode :u1)
+     (extension-minor-opcode :u1)
+     (name-length :u2)
+     (ext-name :s-string :length name-length)
+     (pad-1 :bytes :length (pad-4 name-length))
+     )
+  :size-packet (align-s-4 (+ 6 info-length name-length)
+			  NIL))
+
+(define-packet clx-im-query-extension-reply-fr
+    ((input-method-id :u2)
+     (ext-size :u2)
+     (ext :clx-im-ext-fr :bytes ext-size)))

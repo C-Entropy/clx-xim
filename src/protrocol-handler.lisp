@@ -1,29 +1,31 @@
 (in-package #:clx-xim)
 
-(defgeneric -clx-xim-handle-message- (clx-xim hdr data type)
+(defgeneric -clx-xim-handle-message- (clx-xim header data type)
   (:documentation "doc"))
 
-(defmethod -clx-xim-handle-message- (clx-xim hdr data (type (eql *clx-xim-connect-reply*)))
+(defmethod -clx-xim-handle-message- (clx-xim header data (type (eql *clx-xim-connect-reply*)))
   (format t "*clx-xim-connect-reply* :~A~%" *clx-xim-connect-reply*)
   ;; (unless (eq (open-state clx-xim) :xim-open-wait-open-reply)
   ;;   (return-from -clx-xim-handle-message- NIL))
   )
 
 (defun make-default-ext ()
-  (make-instance 'clx-im-ext
-		 :name "XIM_EXT_MOVE"
-		 :major-opcode
-		 :minor-opcode ))
+  "XIM_EXT_MOVE"
+  ;; (make-instance 'clx-im-ext
+  ;; 		 :name "XIM_EXT_MOVE"
+  ;; 		 :major-opcode *clx-xim-extension*
+  ;; 		 :minor-opcode *clx-xim-ext-move*)
+  )
 
 (defun -clx-xim-send-query-extension (clx-xim)
-  (let ((query-ext (make-instance 'clx-im-query-extension
+  (let ((query-ext (make-instance 'clx-im-query-extension-fr
 				  :input-method-id (connect-id clx-xim)
-				  :ext (make-default-ext)))
-	)
-    ))
+				  :ext (list (make-default-ext)))))
+    (-clx-xim-send-frame- clx-xim query-ext)
+    (setf (open-state clx-xim) :xim-open-wait-extension-reply)))
 
 
-(defmethod -clx-xim-handle-message- (clx-xim hdr data (type (eql *clx-xim-open-reply*)))
+(defmethod -clx-xim-handle-message- (clx-xim header data (type (eql *clx-xim-open-reply*)))
   (unless (eq (open-state clx-xim) :xim-open-wait-open-reply)
     (return-from -clx-xim-handle-message- NIL))
   (format t "*clx-xim-open-reply* :~A~%" *clx-xim-open-reply*)
@@ -40,3 +42,10 @@
 	  (imattr clx-xim) imattr-htable
 	  (icattr clx-xim) icattr-htable)
     (-clx-xim-send-query-extension clx-xim)))
+
+(defmethod -clx-xim-handle-message- (clx-xim header data (type (eql *clx-xim-query-extension-reply*)))
+  (unless (eq (open-state clx-xim) :xim-open-wait-extension-reply)
+    (return-from -clx-xim-handle-message- NIL))
+  (format t "*clx-xim-query-extension-reply* :~A~%" *clx-xim-query-extension-reply*)
+  (let ((frame (-clx-xim-read-frame- data :clx-im-query-extension-reply-fr)))
+    (format t "~%input id: ~A connect-id: ~A~%" (input-method-id frame) (connect-id clx-xim))))
