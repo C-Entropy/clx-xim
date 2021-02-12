@@ -6,6 +6,7 @@
   (:import-from #:uiop #:getenv)
   (:export #:make-clx-xim
 	   #:clx-xim-client-message
+	   #:clx-xim-create-nested-list
 	   #:clx-xim-open
 	   #:clx-xim-set-im-callback
 	   #:clx-xim-set-log-handler
@@ -308,7 +309,7 @@
 
 
 (defun -clx-send-xim-message- (display protocol-atom window data length atom-name)
-  ;; (format t "length ~A ~A~%" length *clx-xim-header-size*)
+  (format t "-clx-send-xim-message-")
   (format t "atom-name ~A~%" atom-name)
   (format t "data ~A~%" data)
   (unless data
@@ -319,9 +320,9 @@
 	     (change-property window atom-name
 			      data :string 8
 				   :mode :append)
-	     (print (list-properties window))
-	     (print atom-name)
-	     (print (find-atom display atom-name))
+	     (format t "~A~%" (list-properties window))
+	     (format t "~A~%" atom-name)
+	     (format t "~A~%" (find-atom display atom-name))
 	     (send-event window
 			 :client-message
 			 0
@@ -591,3 +592,29 @@
     ;; (format t "~%header: ~A message: ~A~%" header message)
     )
   )
+
+(defun -clx-xim-find-icattr- (clx-xim attr)
+  (gethash attr (icattr clx-xim)))
+
+(defun clx-xim-create-nested-list (clx-xim attr pos)
+  (let ((icattr (-clx-xim-find-icattr- clx-xim attr))
+	(fr (make-instance 'clx-im-xicattribute-fr))
+	(total-szie 0)
+	(data NIL))
+    (unless icattr
+      (return-from clx-xim-create-nested-list NIL))
+    (setf (value-length fr) (clx-im-ic-attr-size (type-of-value icattr)))
+    (setf total-szie (size-packet fr))
+    (=-append data
+	      (data-to-byte (attribute-id icattr) :u2)
+	      (data-to-byte (value-length fr) :u2)
+	      (clx-im-get-ic-value pos (type-of-value icattr))
+	      )
+    (=-append data (data-to-byte NIL :pads :length (pad-4 (length data))))
+    ;; (setf data (append data (data-to-byte (attribute-id icattr) :u2)))
+    ;; (setf data (append data (data-to-byte (value-length fr) :u2)))
+    ;; (setf data (append data (clx-im-get-ic-value pos (type-of-value icattr))))
+    ;; (format t "type of: ~A~%"  (type-of-value icattr))
+
+    ;; (=+ total-size (size-packet fr))
+    (cons data total-szie)))

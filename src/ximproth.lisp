@@ -1,6 +1,12 @@
 (defpackage #:ximproth
-  (:use #:cl)
+  (:use #:cl
+	#:clx-xim
+	#:utils)
   (:export
+
+   #:clx-im-ic-attr-size
+   #:clx-im-get-ic-value
+
    #:*clx-xim-connect*
    #:*clx-xim-connect-reply*
    #:*clx-xim-disconnect*
@@ -60,7 +66,45 @@
    #:*clx-xim-extension*
    #:*clx-xim-ext-set-event-mask*
    #:*clx-xim-ext-forward-keyevent*
-   #:*clx-xim-ext-move*))
+   #:*clx-xim-ext-move*
+
+   #:*clx-xim-xn-query-inputstyle*
+   #:*clx-xim-xn-client-window*
+   #:*clx-xim-xn-input-style*
+   #:*clx-xim-xn-focus-window*
+   #:*clx-xim-xn-filter-events*
+   #:*clx-xim-xn-preedit-attributes*
+   #:*clx-xim-xn-status-attributes*
+   #:*clx-xim-xn-area*
+   #:*clx-xim-xn-area-needed*
+   #:*clx-xim-xn-spot-location*
+   #:*clx-xim-xn-colormap*
+   #:*clx-xim-xn-std-colormap*
+   #:*clx-xim-xn-foreground*
+   #:*clx-xim-xn-background*
+   #:*clx-xim-xn-background-pixmap*
+   #:*clx-xim-xn-font-set*
+   #:*clx-xim-xn-line-space*
+   #:*clx-xim-xn-separatorof-nested-list*
+
+   ;; values for the type of XIMATTR & XICATTR
+
+   #:*ximtype-separatorofnestedlist*
+   #:*ximtype-card8*
+   #:*ximtype-card16*
+   #:*ximtype-card32*
+   #:*ximtype-string8*
+   #:*ximtype-window*
+   #:*ximtype-ximstyles*
+   #:*ximtype-xrectangle*
+   #:*ximtype-xpoint*
+   #:*ximtype-xfontset*
+   #:*ximtype-ximoptions*
+   #:*ximtype-ximhotkeytriggers*
+   #:*ximtype-ximhotkeystate*
+   #:*ximtype-ximstringconversion*
+   #:*ximtype-ximvalueslist*
+   #:*ximtype-nest*))
 
 (in-package #:ximproth)
 
@@ -132,3 +176,76 @@
 (defparameter *clx-xim-ext-set-event-mask* #x30)
 (defparameter *clx-xim-ext-forward-keyevent* #x32)
 (defparameter *clx-xim-ext-move* #x33)
+
+
+(defparameter *clx-xim-xn-query-inputstyle* "queryInputstyle")
+(defparameter *clx-xim-xn-client-window* "clientWindow")
+(defparameter *clx-xim-xn-input-style* "inputStyle")
+(defparameter *clx-xim-xn-focus-window* "focusWindow")
+(defparameter *clx-xim-xn-filter-events* "filterEvents")
+(defparameter *clx-xim-xn-preedit-attributes* "preeditAttributes")
+(defparameter *clx-xim-xn-status-attributes* "statusAttributes")
+(defparameter *clx-xim-xn-area* "area")
+(defparameter *clx-xim-xn-area-needed* "areaNeeded")
+(defparameter *clx-xim-xn-spot-location* "spotLocation")
+(defparameter *clx-xim-xn-colormap* "colorMap")
+(defparameter *clx-xim-xn-std-colormap* "stdColorMap")
+(defparameter *clx-xim-xn-foreground* "foreground")
+(defparameter *clx-xim-xn-background* "background")
+(defparameter *clx-xim-xn-background-pixmap* "backgroundPixmap")
+(defparameter *clx-xim-xn-font-set* "fontSet")
+(defparameter *clx-xim-xn-line-space* "lineSpace")
+(defparameter *clx-xim-xn-separatorof-nested-list* "separatorofNestedlist")
+
+
+;; values for the type of XIMATTR & XICATTR
+(defparameter *ximtype-separatorofnestedlist* 0)
+(defparameter *ximtype-card8* 1)
+(defparameter *ximtype-card16* 2)
+(defparameter *ximtype-card32* 3)
+(defparameter *ximtype-string8* 4)
+(defparameter *ximtype-window* 5)
+(defparameter *ximtype-ximstyles* 10)
+(defparameter *ximtype-xrectangle* 11)
+(defparameter *ximtype-xpoint* 12)
+(defparameter *ximtype-xfontset* 13)
+(defparameter *ximtype-ximoptions* 14)
+(defparameter *ximtype-ximhotkeytriggers* 15)
+(defparameter *ximtype-ximhotkeystate* 16)
+(defparameter *ximtype-ximstringconversion* 17)
+(defparameter *ximtype-ximvalueslist* 18)
+(defparameter *ximtype-nest* #x7fff)
+
+
+;; (defun clx-im-ic-attr-size (type)
+;;   (cond ((or (eq type *ximtype-card32*)
+;; 	     (eq type *ximtype-window*))
+;; 	 4)
+;; 	((eq type *ximtype-xrectangle*)
+;; 	 8)
+;; 	((eq type *ximtype-xpoint*)
+;; 	 4)))
+
+(defun clx-im-ic-attr-size (type)
+  (cond ((or (eq type *ximtype-card32*)
+	     (eq type *ximtype-window*)
+	     (eq type *ximtype-xpoint*))
+	 4)
+	((eq type *ximtype-xrectangle*)
+	 8)))
+
+
+(defun clx-im-get-ic-value (pos type)
+  (cond ((or (eq *ximtype-card32* type)
+	     (eq *ximtype-window* type))
+	 (data-to-byte pos :u4))
+	((eq *ximtype-xpoint* type)
+	 (obj-to-data (make-instance 'clx-xim::clx-im-xpoint-fr
+				     :x (first pos)
+				     :y (second pos))))
+	((eq *ximtype-xrectangle* type )
+	 (obj-to-data (make-instance 'clx-xim::clx-im-xrectangle-fr
+				     :x (first pos)
+				     :y (second pos)
+				     :width (third pos)
+				     :height (fourth pos))))))

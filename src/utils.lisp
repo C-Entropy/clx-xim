@@ -1,7 +1,10 @@
 (defpackage #:utils
   (:use #:cl
 	#:ximproth)
-  (:export #:-clx-xim-read-frame-
+  (:export #:=+
+	   #:=-
+	   #:=-append
+	   #:-clx-xim-read-frame-
 	   #:byte-to-data
 	   #:clx-proto-frame-opcode
 	   #:defclass-easy
@@ -25,6 +28,27 @@
 	   #:align-s-4))
 
 (in-package #:utils)
+
+(defun cal-set (fun obj1 objs)
+  `(setf ,obj1 (funcall ,fun ,obj1 ,@objs)))
+
+(defmacro =+ (num1 &rest nums)
+  (cal-set #'+ num1 nums))
+
+(defmacro =- (num1 &rest nums)
+  (cal-set #'- num1 nums))
+
+(defmacro =-append (obj1 &rest objs)
+  `(setf ,obj1 (append ,obj1 ,@objs)))
+
+;; (defmacro =+ (num1 &rest nums)
+;;   `(setf ,num1 (+ ,num1 ,@nums)))
+
+;; (defmacro =- (num1 &rest nums)
+;;   `(setf ,num1 (- ,num1 ,@nums)))
+
+
+
 
 (defun list->vector (list)
   (make-array (length list) :initial-contents (reverse list) :fill-pointer (length list)))

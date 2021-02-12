@@ -1,7 +1,8 @@
 (defpackage #:demo
   (:use #:cl
 	#:xlib
-	#:clx-xim)
+	#:clx-xim
+	#:ximproth)
   (:export #:start-demo
 	   #:clx-xim-client-message))
 
@@ -21,8 +22,13 @@
 (defun commit-string (clx-xim clx-xic flag str keysym nKeySym user-data)
   (format t "Key commit: ~A~%" input-content))
 
-(defun open-callback (xcb-xim user-data)
-  T)
+(defun open-callback (clx-xim user-data)
+  (let ((input-style NIL)
+	(nested (clx-xim-create-nested-list clx-xim *clx-xim-xn-spot-location* '(0 0))))
+    (format t "~A~%" nested)
+    ;; (clx-xim-create-ic clx-xim create-ic-callback NIL *clx-xim-xninput-style* input-style *clx-xim-xnclient-window* (get-window) *clx-xim-xnfocus-window (get-window) *clx-xim-xn-preedit-attributes nested NIL
+    )
+    )
 
 (let ((clx-xim nil))
   (defun set-up-clx-xim (display screen
@@ -130,3 +136,5 @@
 ;; 			       target 8
 ;; 			       :transform #'char-code)
 ;; (start-demo)
+
+;; (gethash ximproth::*clx-xim-xn-spot-location* (clx-xim::icattr (get-clx-xim)))

@@ -67,6 +67,14 @@
 			     length-of-ic-attribute)
 			  NIL))
 
+(define-packet clx-im-xicattribute-fr
+    ((attribute-id :u2)
+     (value-length :u2)
+     (value :s-string))
+  :size-packet (+ 4
+		  (align-s-4 value-length
+			     NIL)))
+
 (define-packet clx-im-open-reply-fr
     ((input-method-id :u2)
      (im-size :u2)
@@ -128,11 +136,20 @@
   (+ 8 (align-s-4 (s-strings-bytes encodings) NIL)
      (s-strings-bytes encoding-info)))
 
-(setf a (make-instance 'clx-im-encoding-negotiation-fr
-		       :input-method-id 94
-		       :encodings '("COMPOUND_TEXT")))
+(define-packet clx-im-encoding-negotiation-reply-fr
+    ((input-method-id :u2)
+     (category :u2)
+     (index :u2))
+  :size-packet 6)
 
-(clx-proto-frame-opcode a)
-(obj-to-data a)
+(define-packet clx-im-xrectangle-fr
+    ((x :u2)
+     (y :u2)
+     (width :u2)
+     (height :u2))
+  :size-packet 8)
 
-;; (data-to-byte NIL :u2)
+(define-packet clx-im-xpoint-fr
+    ((x :u2)
+     (y :u2))
+  :size-packet 4)
