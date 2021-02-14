@@ -84,9 +84,18 @@
     (event-case (display)
       ((:client-message) (window type format data)
        ;; (print ":client-message")
-       (when (eq type :_xim_protocol)
-	 ;; (format t "~%window: ~A type:  ~A format: ~A data: ~A~%" window type format data)
-	 (clx-xim-client-message (get-clx-xim) format data)))
+
+       (case type
+	 (:_xim_protocol (clx-xim-client-message (get-clx-xim) format data))
+
+       ;; (when (eq type :_xim_protocol)
+       ;; 	 ;; (format t "~%window: ~A type:  ~A format: ~A data: ~A~%" window type format data)
+       ;; 	 )
+       ))
+
+      ((:property-notify) (window atom state time)
+       (case atom
+	 (:xim_servers (clx-xim-property-changed (get-clx-xim) window))))
 
       ;; ((:selection-notify) (window selection target property time)
       ;;  (print ":selection-notify")

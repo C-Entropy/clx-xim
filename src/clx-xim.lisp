@@ -730,3 +730,9 @@
 			 (items (frame queue)))))))
     (=-append (queue clx-xim) (list queue)))
   (-clx-xim-process-queue- clx-xim))
+
+(defun clx-xim-property-changed (clx-xim window)
+  (when (eq (root-window clx-xim) window)
+    (setf (recheck clx-xim) T)
+    (when (eq :xim-connect-fail (state-phase (connect-state clx-xim)))
+      (setf (yield-recheck clx-xim) T))))
