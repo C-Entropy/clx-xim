@@ -1,12 +1,8 @@
 (defpackage #:ximproth
   (:use #:cl
-	#:clx-xim
-	#:utils)
+	;; #:utils
+	)
   (:export
-
-   #:clx-im-ic-attr-size
-   #:clx-im-get-ic-value
-
    #:*clx-xim-connect*
    #:*clx-xim-connect-reply*
    #:*clx-xim-disconnect*
@@ -68,24 +64,24 @@
    #:*clx-xim-ext-forward-keyevent*
    #:*clx-xim-ext-move*
 
-   #:*clx-xim-xn-query-inputstyle*
-   #:*clx-xim-xn-client-window*
-   #:*clx-xim-xn-input-style*
-   #:*clx-xim-xn-focus-window*
-   #:*clx-xim-xn-filter-events*
-   #:*clx-xim-xn-preedit-attributes*
-   #:*clx-xim-xn-status-attributes*
-   #:*clx-xim-xn-area*
-   #:*clx-xim-xn-area-needed*
-   #:*clx-xim-xn-spot-location*
-   #:*clx-xim-xn-colormap*
-   #:*clx-xim-xn-std-colormap*
-   #:*clx-xim-xn-foreground*
-   #:*clx-xim-xn-background*
-   #:*clx-xim-xn-background-pixmap*
-   #:*clx-xim-xn-font-set*
-   #:*clx-xim-xn-line-space*
-   #:*clx-xim-xn-separatorof-nested-list*
+   #:*clx-xim-xnquery-inputstyle*
+   #:*clx-xim-xnclient-window*
+   #:*clx-xim-xninput-style*
+   #:*clx-xim-xnfocus-window*
+   #:*clx-xim-xnfilter-events*
+   #:*clx-xim-xnpreedit-attributes*
+   #:*clx-xim-xnstatus-attributes*
+   #:*clx-xim-xnarea*
+   #:*clx-xim-xnarea-needed*
+   #:*clx-xim-xnspot-location*
+   #:*clx-xim-xncolormap*
+   #:*clx-xim-xnstd-colormap*
+   #:*clx-xim-xnforeground*
+   #:*clx-xim-xnbackground*
+   #:*clx-xim-xnbackground-pixmap*
+   #:*clx-xim-xnfont-set*
+   #:*clx-xim-xnline-space*
+   #:*clx-xim-xnseparatorof-nested-list*
 
    ;; values for the type of XIMATTR & XICATTR
 
@@ -104,7 +100,18 @@
    #:*ximtype-ximhotkeystate*
    #:*ximtype-ximstringconversion*
    #:*ximtype-ximvalueslist*
-   #:*ximtype-nest*))
+   #:*ximtype-nest*
+
+
+   #:*clx-im-preeditarea*
+   #:*clx-im-preeditcallbacks*
+   #:*clx-im-preeditposition*
+   #:*clx-im-preeditnothing*
+   #:*clx-im-preeditnone*
+   #:*clx-im-statusarea*
+   #:*clx-im-statuscallbacks*
+   #:*clx-im-statusnothing*
+   #:*clx-im-statusnone*))
 
 (in-package #:ximproth)
 
@@ -178,24 +185,24 @@
 (defparameter *clx-xim-ext-move* #x33)
 
 
-(defparameter *clx-xim-xn-query-inputstyle* "queryInputstyle")
-(defparameter *clx-xim-xn-client-window* "clientWindow")
-(defparameter *clx-xim-xn-input-style* "inputStyle")
-(defparameter *clx-xim-xn-focus-window* "focusWindow")
-(defparameter *clx-xim-xn-filter-events* "filterEvents")
-(defparameter *clx-xim-xn-preedit-attributes* "preeditAttributes")
-(defparameter *clx-xim-xn-status-attributes* "statusAttributes")
-(defparameter *clx-xim-xn-area* "area")
-(defparameter *clx-xim-xn-area-needed* "areaNeeded")
-(defparameter *clx-xim-xn-spot-location* "spotLocation")
-(defparameter *clx-xim-xn-colormap* "colorMap")
-(defparameter *clx-xim-xn-std-colormap* "stdColorMap")
-(defparameter *clx-xim-xn-foreground* "foreground")
-(defparameter *clx-xim-xn-background* "background")
-(defparameter *clx-xim-xn-background-pixmap* "backgroundPixmap")
-(defparameter *clx-xim-xn-font-set* "fontSet")
-(defparameter *clx-xim-xn-line-space* "lineSpace")
-(defparameter *clx-xim-xn-separatorof-nested-list* "separatorofNestedlist")
+(defparameter *clx-xim-xnquery-inputstyle* "queryInputstyle")
+(defparameter *clx-xim-xnclient-window* "clientWindow")
+(defparameter *clx-xim-xninput-style* "inputStyle")
+(defparameter *clx-xim-xnfocus-window* "focusWindow")
+(defparameter *clx-xim-xnfilter-events* "filterEvents")
+(defparameter *clx-xim-xnpreedit-attributes* "preeditAttributes")
+(defparameter *clx-xim-xnstatus-attributes* "statusAttributes")
+(defparameter *clx-xim-xnarea* "area")
+(defparameter *clx-xim-xnarea-needed* "areaNeeded")
+(defparameter *clx-xim-xnspot-location* "spotLocation")
+(defparameter *clx-xim-xncolormap* "colorMap")
+(defparameter *clx-xim-xnstd-colormap* "stdColorMap")
+(defparameter *clx-xim-xnforeground* "foreground")
+(defparameter *clx-xim-xnbackground* "background")
+(defparameter *clx-xim-xnbackground-pixmap* "backgroundPixmap")
+(defparameter *clx-xim-xnfont-set* "fontSet")
+(defparameter *clx-xim-xnline-space* "lineSpace")
+(defparameter *clx-xim-xnseparatorof-nested-list* "separatorofNestedlist")
 
 
 ;; values for the type of XIMATTR & XICATTR
@@ -226,26 +233,12 @@
 ;; 	((eq type *ximtype-xpoint*)
 ;; 	 4)))
 
-(defun clx-im-ic-attr-size (type)
-  (cond ((or (eq type *ximtype-card32*)
-	     (eq type *ximtype-window*)
-	     (eq type *ximtype-xpoint*))
-	 4)
-	((eq type *ximtype-xrectangle*)
-	 8)))
-
-
-(defun clx-im-get-ic-value (pos type)
-  (cond ((or (eq *ximtype-card32* type)
-	     (eq *ximtype-window* type))
-	 (data-to-byte pos :u4))
-	((eq *ximtype-xpoint* type)
-	 (obj-to-data (make-instance 'clx-xim::clx-im-xpoint-fr
-				     :x (first pos)
-				     :y (second pos))))
-	((eq *ximtype-xrectangle* type )
-	 (obj-to-data (make-instance 'clx-xim::clx-im-xrectangle-fr
-				     :x (first pos)
-				     :y (second pos)
-				     :width (third pos)
-				     :height (fourth pos))))))
+(defparameter *clx-im-preeditarea* #x0001)
+(defparameter *clx-im-preeditcallbacks* #x0002)
+(defparameter *clx-im-preeditposition* #x0004)
+(defparameter *clx-im-preeditnothing* #x0008)
+(defparameter *clx-im-preeditnone* #x0010)
+(defparameter *clx-im-statusarea* #x0100)
+(defparameter *clx-im-statuscallbacks* #x0200)
+(defparameter *clx-im-statusnothing* #x0400)
+(defparameter *clx-im-statusnone* #x0800)

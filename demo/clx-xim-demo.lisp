@@ -8,11 +8,6 @@
 
 (in-package #:demo)
 
-;; (fprintf(stderr, "Key %s Keycode %u, State %u\n",
-;; 		   event->response_type == XCB_KEY_PRESS ? "press" : "release",
-;; 		   event->detail, event->state)
-;; )
-
 (defun logger (fmt)
   (format t "~A~%" fmt))
 
@@ -22,13 +17,17 @@
 (defun commit-string (clx-xim clx-xic flag str keysym nKeySym user-data)
   (format t "Key commit: ~A~%" input-content))
 
+(defun create-ic-callback (clx-xim ic user-data)
+  (when ic
+    (format t "icid: ~A~%" ic)
+    (clx-xim-set-ic-focus clx-xim ic)))
+
 (defun open-callback (clx-xim user-data)
-  (let ((input-style NIL)
-	(nested (clx-xim-create-nested-list clx-xim *clx-xim-xn-spot-location* '(0 0))))
-    (format t "~A~%" nested)
-    ;; (clx-xim-create-ic clx-xim create-ic-callback NIL *clx-xim-xninput-style* input-style *clx-xim-xnclient-window* (get-window) *clx-xim-xnfocus-window (get-window) *clx-xim-xn-preedit-attributes nested NIL
-    )
-    )
+  (clx-xim-create-ic clx-xim #'create-ic-callback NIL
+		     (list *clx-xim-xninput-style* (logior *clx-im-preeditposition* *clx-im-statusarea*))
+		     (list *clx-xim-xnclient-window* (get-window))
+		     (list *clx-xim-xnfocus-window* (get-window))
+		     (list *clx-xim-xnpreedit-attributes* (clx-xim-create-nested-list clx-xim *clx-xim-xnspot-location* '(0 0)))))
 
 (let ((clx-xim nil))
   (defun set-up-clx-xim (display screen
@@ -137,4 +136,6 @@
 ;; 			       :transform #'char-code)
 ;; (start-demo)
 
-;; (gethash ximproth::*clx-xim-xn-spot-location* (clx-xim::icattr (get-clx-xim)))
+;; (gethash ximproth::*clx-xim-xnspot-location* (clx-xim::icattr (get-clx-xim)))
+
+;; (cdr (cons *clx-xim-xninput-style* (logior *clx-im-preeditposition* *clx-im-statusarea*)))

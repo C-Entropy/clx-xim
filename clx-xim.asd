@@ -5,7 +5,8 @@
   :depends-on ("clx" "flexi-streams")
   :components ((:module "src"
                 :components
-                ((:file "ximproth")
+                ((:file "ximproth" ;; :depends-on ("clx-xim")
+			)
 		 (:file "clx-xim" :depends-on ("utils" "ximproth"))
 		 (:file "protrocol-handler" :depends-on ("ximproth" "clx-xim"))
 		 (:file "utils" :depends-on ("ximproth"))

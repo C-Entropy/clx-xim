@@ -6,8 +6,10 @@
   (:import-from #:uiop #:getenv)
   (:export #:make-clx-xim
 	   #:clx-xim-client-message
+	   #:clx-xim-create-ic
 	   #:clx-xim-create-nested-list
 	   #:clx-xim-open
+	   #:clx-xim-set-ic-focus
 	   #:clx-xim-set-im-callback
 	   #:clx-xim-set-log-handler
 	   ;;class clx-xim itself
@@ -88,6 +90,14 @@
    window
    requestor-window))
 
+(define-class-easy clx-xim-request ()
+  (major-code
+   minor-code
+   user-data
+   frame
+   callback-type
+   callback))
+
 (defun clx-xim-make-im-name (im-name)
   "make im name using im-name, cutting down '@im=', then return the left part"
   (funcall (lambda (length)
@@ -114,8 +124,6 @@
 		 :init NIL
 		 :connect-id 0
 		 :xim-sequence 0
-		 :queue (make-array 5 :fill-pointer 0
-				      :adjustable t)
 		 :byte-order (if (= 1 (ldb (byte 8 0) 1))
 				 (char-code #\l)
 				 (char-code #\B))))
@@ -319,7 +327,7 @@
       (progn (intern-atom display atom-name)
 	     (change-property window atom-name
 			      data :string 8
-				   :mode :append)
+			      :mode :append)
 	     (format t "~A~%" (list-properties window))
 	     (format t "~A~%" atom-name)
 	     (format t "~A~%" (find-atom display atom-name))
@@ -375,8 +383,8 @@
 			  data
 			  length
 			  (get-keyword (concatenate 'string
-				       "_client" (write-to-string (connect-id clx-xim))
-				       "_" (write-to-string (xim-sequence clx-xim)))))
+						    "_client" (write-to-string (connect-id clx-xim))
+						    "_" (write-to-string (xim-sequence clx-xim)))))
   (setf (xim-sequence clx-xim) (1+ (xim-sequence clx-xim))))
 
 (defun -clx-xim-send-frame- (clx-xim frame)
@@ -618,3 +626,107 @@
 
     ;; (=+ total-size (size-packet fr))
     (cons data total-szie)))
+
+(defun -clx-xim-new-request- (clx-xim major-code minor-code callback user-data)
+  (make-instance 'clx-xim-request
+		 :major-code major-opcode
+		 :minor-code minor-code
+		 :callback callback
+		 :user-data user-data))
+
+;; (defun -clx-xim-check-rest- (clx-xim rest)
+;;   (let ((count 0))
+;;     (dolist (item rest)
+;;       (unless (-clx-xim-find-icattr- clx-xim (car item))
+;; 	(return-from -clx-xim-check-rest- NIL))
+;;       (=+ count 1))))
+
+(defun clx-xim-set-ic-focus (clx-xim ic)
+  (-clx-xim-send-frame- clx-xim (make-instance 'clx-xim-set-ic-focus-fr
+					       :input-method-id (connect-id clx-xim)
+					       :input-context-id ic)))
+
+(defun -clx-xim-send-request-frame- (clx-xim request)
+  (-clx-xim-send-frame- clx-xim (frame request)))
+
+(defun -clx-xim-process-fail-callback- (clx-xim request)
+  (unless (callback request)
+    (return-from -clx-xim-process-fail-callback- NIL))
+  (case (major-code request)
+    (#.*clx-xim-create-ic*
+     (funcall (callback request) clx-xim clx-xim 0 (user-data request))))
+  ;; (cond ((eq *clx-xim-create-ic*
+  ;; 	     (major-code request))
+  ;; 	 )
+  ;; 	((eq *clx-xim-destroy-ic*
+  ;; 	     (major-code request))
+  ;; 	 (funcall (callback request) clx-xim (input-context-id (frame request)))
+  ;; 	 )
+
+  ;; 	((eq *clx-xim-get-im-values*
+  ;; 	     (major-code request))
+  ;; 	 (funcall (callback request) clx-xim )
+  ;; 	 )
+
+  ;; 	((eq *clx-xim-get-ic-values*
+  ;; 	     (major-code request))
+  ;; 	 (funcall (callback request) clx-xim )
+  ;; 	 )
+
+  ;; 	((eq *clx-xim-set-ic-values*
+  ;; 	     (major-code request))
+  ;; 	 (funcall (callback request) clx-xim )
+  ;; 	 )
+
+  ;; 	((eq *clx-xim-reset-ic*
+  ;; 	     (major-code request))
+  ;; 	 (funcall (callback request) clx-xim )
+  ;; 	 )
+  ;; 	)
+  )
+
+(defun -clx-xim-process-queue- (clx-xim)
+  (labels ((processor ()
+	     (when (and (queue clx-xim)
+			(not (current clx-xim)))
+	       (let ((request (pop (queue clx-xim))))
+		 (if (-clx-xim-send-request-frame- clx-xim request)
+		     (unless (eq *clx-xim-forward-event* (major-code request))
+		       (setf (current clx-xim) request))
+		     (progn (-clx-xim-process-fail-callback- clx-xim request)
+			    (setf (current clx-xim) NIL))))
+	       (processor))))
+    (processor)))
+
+(defun clx-xim-create-ic (clx-xim callback user-data &rest rest)
+  (unless (eq (open-state clx-xim)
+	      :xim-open-done)
+    (return-from clx-xim-create-ic NIL))
+  (let ((queue (make-instance 'clx-xim-request
+			      :major-code *clx-xim-create-ic* :minor-code 0
+			      :callback callback :user-data user-data
+			      :callback-type :create-ic
+			      :frame (make-instance 'clx-im-create-ic-fr
+						    :size 0
+						    :input-method-id (connect-id clx-xim)))))
+    (dolist (item rest)
+      (print item)
+      (=+ (size (frame queue)) 1)
+      (when (or (string= (car item) *clx-xim-xnclient-window*)
+		(string= (car item) *clx-xim-xnfocus-window*))
+	(setf (client-window clx-xim) (second item)))
+      (let ((icattr (-clx-xim-find-icattr- clx-xim (car item))))
+	(if (eq (type-of-value icattr) *ximtype-nest*)
+	    (push (make-instance 'clx-im-xicattribute-fr
+					:attribute-id (attribute-id icattr)
+					:value-length (cdadr item)
+					:value (caadr item))
+			 (items (frame queue)))
+	    (progn (print item)
+		   (push (make-instance 'clx-im-xicattribute-fr
+				 :attribute-id (attribute-id icattr)
+				 :value-length (clx-im-ic-attr-size (type-of-value icattr))
+				 :value (clx-im-get-ic-value (second item) (type-of-value icattr)))
+			 (items (frame queue)))))))
+    (=-append (queue clx-xim) (list queue)))
+  (-clx-xim-process-queue- clx-xim))

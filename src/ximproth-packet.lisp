@@ -50,7 +50,7 @@
      (type-of-value :u2)
      (length-of-im-attribute :u2)
      (im-attribute :s-string :length length-of-im-attribute)
-     (pad :bytes :length (pad-4 (+ 6
+     (pad :pads :length (pad-4 (+ 6
 				     length-of-im-attribute))))
   :size-packet (align-s-4 (+ 6
 			     length-of-im-attribute)
@@ -61,16 +61,23 @@
      (type-of-value :u2)
      (length-of-ic-attribute :u2)
      (ic-attribute :s-string :length length-of-ic-attribute)
-     (pad :bytes :length (pad-4 (+ 6
-				     length-of-ic-attribute))))
+     (pad :pads :length (pad-4 (+ 6
+				  length-of-ic-attribute))))
   :size-packet (align-s-4 (+ 6
 			     length-of-ic-attribute)
 			  NIL))
 
+(define-packet clx-xim-set-ic-focus-fr
+    ((input-method-id :u2)
+     (input-context-id :u2))
+  :size-packet 4
+  :opcode *clx-xim-set-ic-focus*)
+
 (define-packet clx-im-xicattribute-fr
     ((attribute-id :u2)
      (value-length :u2)
-     (value :s-string))
+     (value :bytes)
+     (pad :pads :length (pad-4 value-length)))
   :size-packet (+ 4
 		  (align-s-4 value-length
 			     NIL)))
@@ -96,13 +103,13 @@
 (define-packet encodinginfo;;should be
     ((info-length :u2)
      (ext-info :s-string :length info-length)
-     (pad-0 :bytes :length (pad-4 (+ 2 info-length)))
+     (pad-0 :pads :length (pad-4 (+ 2 info-length)))
 
      (extension-major-opcode :u1)
      (extension-minor-opcode :u1)
      (name-length :u2)
      (ext-name :s-string :length name-length)
-     (pad-1 :bytes :length (pad-4 name-length))
+     (pad-1 :pads :length (pad-4 name-length))
      )
   :size-packet (align-s-4 (+ 6 info-length name-length)
 			  NIL))
@@ -112,7 +119,7 @@
      (extension-minor-opcode :u1)
      (name-length :u2)
      (ext-name :s-string :length name-length)
-     (pad-1 :bytes :length (pad-4 name-length)))
+     (pad-1 :pads :length (pad-4 name-length)))
   :size-packet (+ 4
 		  (align-s-4 name-length NIL)))
 
@@ -153,3 +160,59 @@
     ((x :u2)
      (y :u2))
   :size-packet 4)
+
+(define-packet clx-im-ximattribute-fr
+    ((attribute-id :u2)
+     (value-length :u2)
+     (value :s-string))
+  :size-packet (+ 4 (s-strings-bytes value)))
+
+(define-packet clx-im-create-ic-fr
+    ((input-method-id :u2)
+     (size :u2)
+     (items :clx-im-xicattribute-fr))
+  :size-packet (+ 4 (let ((result 0))
+		      (dolist (item items)
+			(=+ result (size-packet item)))
+		      result))
+  :opcode *clx-xim-create-ic*)
+
+(define-packet clx-im-create-ic-reply-fr
+    ((input-method-id :u2)
+     (input-context-id :u2))
+  :size-packet 4)
+
+
+(define-packet clx-im-set-event-mask-fr
+    ((input-method-id :u2)
+     (input-context-id :u2)
+     (forward-event-mask :u4)
+     (synchronous-event-mask :u4))
+  :size-packet 12)
+
+(defun clx-im-ic-attr-size (type)
+  (cond ((or (eq type *ximtype-card32*)
+	     (eq type *ximtype-window*)
+	     (eq type *ximtype-xpoint*))
+	 4)
+	((eq type *ximtype-xrectangle*)
+	 8)))
+
+
+(defun clx-im-get-ic-value (pos type)
+  (cond ((eq *ximtype-card32* type)
+	 (data-to-byte pos :u4))
+
+	((eq *ximtype-window* type)
+	 (data-to-byte (window-id pos) :u4))
+
+	((eq *ximtype-xpoint* type)
+	 (obj-to-data (make-instance 'clx-xim::clx-im-xpoint-fr
+				     :x (first pos)
+				     :y (second pos))))
+	((eq *ximtype-xrectangle* type )
+	 (obj-to-data (make-instance 'clx-xim::clx-im-xrectangle-fr
+				     :x (first pos)
+				     :y (second pos)
+				     :width (third pos)
+				     :height (fourth pos))))))

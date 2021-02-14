@@ -33,13 +33,13 @@
   `(setf ,obj1 (funcall ,fun ,obj1 ,@objs)))
 
 (defmacro =+ (num1 &rest nums)
-  (cal-set #'+ num1 nums))
+  `(setf ,num1 (+ ,num1 ,@nums)))
 
 (defmacro =- (num1 &rest nums)
-  (cal-set #'- num1 nums))
+  `(setf ,num1 (- ,num1 ,@nums)))
 
 (defmacro =-append (obj1 &rest objs)
-  `(setf ,obj1 (append ,obj1 ,@objs)))
+  `(setf ,obj1 (append ,@objs ,obj1)))
 
 ;; (defmacro =+ (num1 &rest nums)
 ;;   `(setf ,num1 (+ ,num1 ,@nums)))
@@ -98,22 +98,33 @@
 (defgeneric data-to-byte (data byte &key)
   (:documentation "doc"))
 
+(defun data-to-n-byte (data n)
+  (=- n 1)
+  (let ((result NIL))
+    (labels ((t-b ()
+	      (push (ldb (byte 8 (* 8 n)) data) result)
+	       (when (> n 0)
+		 (=- n 1)
+		(t-b))))
+      (t-b))
+    result))
+
 (defmethod data-to-byte (data (byte (eql :u1)) &key)
   (list data))
 
 (defmethod data-to-byte (data (byte (eql :u2)) &key n-data)
-  (format t "~%~A~%" n-data)
   (when n-data
     (setf data n-data))
-  (list (ldb (byte 8 0) data)
-	(ldb (byte 8 8) data)))
+  (data-to-n-byte data 2))
+
+(defmethod data-to-byte (data (byte (eql :u4)) &key n-data)
+  (when n-data
+    (setf data n-data))
+  (data-to-n-byte data 4))
 
 
-(defmethod data-to-byte (data (byte (eql :bytes)) &key length)
-  (let ((list NIL))
-    (dotimes (c length)
-      (push 0 list))
-    list))
+(defmethod data-to-byte (data (byte (eql :bytes)) &key)
+  data)
 
 (defmethod data-to-byte (data (byte (eql :pads)) &key length)
   (let ((list NIL))
@@ -142,6 +153,20 @@
 		 (string-to-byte (cdr strings) (append (s->b (car strings)) bytes))
 		 (return-from data-to-byte bytes))))
     (string-to-byte data NIL)))
+
+(defmethod data-to-byte (data (byte (eql :clx-im-ximattribute-fr)) &key)
+  (let ((result NIL))
+    (if (listp data)
+	(dolist (item data result)
+	  (=-append result (obj-to-data item)))
+	(obj-to-data data))))
+
+(defmethod data-to-byte (data (byte (eql :clx-im-xicattribute-fr)) &key)
+  (let ((result NIL))
+    (if (listp data)
+	(dolist (item data result)
+	  (=-append result (obj-to-data item)))
+	(obj-to-data data))))
 
 (defun load-bytes (length bytes)
   (let ((data 0))
@@ -247,6 +272,9 @@
 
 (defmethod -clx-xim-read-frame- (byte (type (eql :u4))  &key)
   (load-bytes 4 byte))
+
+(defmethod -clx-xim-read-frame- (byte (type (eql :pads)) &key length)
+  (load-bytes length byte))
 
 (defmethod -clx-xim-read-frame- (byte (type (eql :bytes)) &key length)
   (load-bytes length byte))
@@ -359,7 +387,7 @@
        (defmethod clx-proto-frame-opcode ((,objvar ,packet-name))
 	 ,(if opcode
 	      opcode
-	      :opcode-not-set))
+	      `(error (concatenate 'string "error-opcode-not-set " (symbol-name ',packet-name)))))
 
        (defmethod -clx-xim-read-frame- (,datavar (,typevar (eql ,(get-keyword packet-name))) &key)
 	 (let ((,objvar (make-instance ',packet-name)))
