@@ -111,7 +111,13 @@
    #:*clx-im-statusarea*
    #:*clx-im-statuscallbacks*
    #:*clx-im-statusnothing*
-   #:*clx-im-statusnone*))
+   #:*clx-im-statusnone*
+
+   #:*clx-xim-synchronous*
+   #:*clx-xim-lookup-chars*
+   #:*clx-xim-lookup-keysym*
+   #:*clx-xim-lookup-both*
+))
 
 (in-package #:ximproth)
 
@@ -242,3 +248,8 @@
 (defparameter *clx-im-statuscallbacks* #x0200)
 (defparameter *clx-im-statusnothing* #x0400)
 (defparameter *clx-im-statusnone* #x0800)
+
+(defparameter *clx-xim-synchronous* 1)
+(defparameter *clx-xim-lookup-chars*  2)
+(defparameter *clx-xim-lookup-keysym*  4)
+(defparameter *clx-xim-lookup-both*  (logior *clx-xim-lookup-chars* *clx-xim-lookup-keysym*))

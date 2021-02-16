@@ -28,7 +28,7 @@
   (let ((encoding-negotiation (make-instance 'clx-im-encoding-negotiation-fr
 					     :input-method-id (connect-id clx-xim)
 					     :encodings '("COMPOUND_TEXT"))))
-    (format t "-clx-xim-send-encoding-negotiation-: ~A~%" (obj-to-data encoding-negotiation))
+    ;; (format t "-clx-xim-send-encoding-negotiation-: ~A~%" (obj-to-data encoding-negotiation))
     (-clx-xim-send-frame- clx-xim encoding-negotiation))
   (setf (open-state clx-xim) :xim-open-wait-encoding-reply))
 
@@ -37,11 +37,11 @@
     (return-from -clx-xim-handle-message- NIL))
   (format t "handling *clx-xim-open-reply* :~A~%" *clx-xim-open-reply*)
   ;; (format t "~A" data)
-  (print (length data))
+  ;; (print (length data))
   (let ((frame (-clx-xim-read-frame- data :clx-im-open-reply-fr))
 	(imattr-htable (imattr clx-xim))
 	(icattr-htable (icattr clx-xim)))
-    (format t "handling *clx-xim-open-reply* :~A~%" *clx-xim-open-reply*)
+    ;; (format t "handling *clx-xim-open-reply* :~A~%" *clx-xim-open-reply*)
     (dolist (item (im-ximattr frame))
       (setf (gethash (im-attribute item) imattr-htable) item))
     (dolist (item (ic-ximattr frame))
@@ -50,7 +50,8 @@
 	  (imattr clx-xim) imattr-htable
 	  (icattr clx-xim) icattr-htable)
     (-clx-xim-send-query-extension clx-xim))
-  (format t "handling *clx-xim-open-reply* :~A~%" *clx-xim-open-reply*))
+  ;; (format t "handling *clx-xim-open-reply* :~A~%" *clx-xim-open-reply*)
+  )
 
 (defmethod -clx-xim-handle-message- (clx-xim header data (type (eql *clx-xim-query-extension-reply*)))
   (unless (eq (open-state clx-xim) :xim-open-wait-extension-reply)
@@ -93,3 +94,19 @@
 		 (assoc :set-event-mask (im-callback clx-xim)))
       (return-from -clx-xim-handle-message- NIL))
     (funcall (cdr (assoc :set-event-mask (im-callback clx-xim))) clx-xim (input-context-id frame) (forward-event-mask frame) (synchronous-event-mask frame) (user-data clx-xim))))
+
+
+(defmethod -clx-xim-handle-message- (clx-xim header data (type (eql *clx-xim-forward-event*)))
+  (format t "~%handling *clx-xim-forward-event* :~A~%" *clx-xim-forward-event*)
+  (let ((frame (-clx-xim-read-frame- data :clx-im-forward-event-fr)))
+    (when (or (< (header-bytes header) 10);;10 = (/ (+ (size-packet frame) (size key press)) 4)
+	       (not (eq (connect-id clx-xim)
+			(input-method-id frame))))
+      (return-from -clx-xim-handle-message- NIL))
+    (let ((key-event (-clx-xim-read-frame- data :xcb-key-press-event-fr)))
+      (when (assoc :forward-event (im-callback clx-xim))
+	;; (print (cdr (assoc :forward-event (im-callback clx-xim))))
+	(funcall (cdr (assoc :forward-event (im-callback clx-xim)))
+		 clx-xim (input-context-id frame) (code key-event) (state key-event) (response-type key-event) (user-data clx-xim)))
+      (when (eq (flag frame) *clx-xim-synchronous*)
+	(-clx-xim-sync- clx-xim (input-context-id frame))))))

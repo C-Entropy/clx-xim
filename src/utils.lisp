@@ -307,7 +307,7 @@
     `(defmethod -clx-xim-read-frame- :around (byte (type (eql ,obj-type)) &key bytes)
        (let ((,framevar NIL))
 	 (labels ((read-frame ()
-		    (format t "bytes: ~A~%" bytes)
+		    ;; (format t "bytes: ~A~%" bytes)
 		    (push (call-next-method) ,framevar)
 		    (setf bytes (- bytes 4 (size-packet (car ,framevar))))
 		    (when (> bytes 0)

@@ -216,3 +216,33 @@
 				     :y (second pos)
 				     :width (third pos)
 				     :height (fourth pos))))))
+
+(define-packet clx-im-forward-event-fr
+    ((input-method-id :u2)
+     (input-context-id :u2)
+     (flag :u2)
+     (sequence-number :u2)))
+
+(define-packet xcb-key-press-event-fr
+    ((response-type :u1)
+     (code :u1)
+     (x-sequence :u2)
+     (x-time :u4)
+     (root :u4)
+     (event :u4)
+     (child :u4)
+     (root-x :u2)
+     (root-y :u2)
+     (event-x :u2)
+     (event-y :u2)
+     (state :u2)
+     (same-screen :u1)
+     (pad :pads :length 1)))
+
+
+(define-packet clx-xim-sync-reply-fr
+    ((input-method-id :u2)
+     (input-context-id :u2))
+  :size-packet 4
+  :opcode *clx-xim-sync-reply*
+  )
