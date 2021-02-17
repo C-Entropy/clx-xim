@@ -215,7 +215,7 @@
      (flag :u2)
      (sequence-number :u2)))
 
-(define-packet xcb-key-press-event-fr
+(define-packet clx-im-key-press-event-fr
     ((response-type :u1)
      (code :u1)
      (x-sequence :u2)
@@ -232,8 +232,22 @@
      (pad :pads :length 1)))
 
 
-(define-packet clx-xim-sync-reply-fr
+(define-packet clx-im-sync-reply-fr
     ((input-method-id :u2)
      (input-context-id :u2))
   :size-packet 4
   :opcode *clx-xim-sync-reply*)
+
+(define-packet clx-im-ximtriggerkey-fr
+    ((key-sym :u4)
+     (modifier :u4)
+     (modifier-mask :u4))
+  :size-packet 12)
+
+(define-packet clx-im-register-triggerkeys-fr
+    ((input-method-id :u2)
+     (pad :u2)
+     (on-key-length :u4)
+     (on-key :clx-im-ximtriggerkey-fr :bytes on-key-length)
+     (off-key-length :u4)
+     (off-key :clx-im-ximtriggerkey-fr :bytes off-key-length)))

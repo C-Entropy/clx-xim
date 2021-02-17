@@ -322,7 +322,7 @@
 (define-read-around :clx-im-ximattr-fr)
 (define-read-around :clx-im-xicattr-fr)
 (define-read-around :clx-im-ext-fr)
-
+(define-read-around :clx-im-ximtriggerkey-fr)
 
 
 ;; (defmethod -clx-xim-read-frame- :around (byte (type (eql :clx-im-ext-fr)) &key bytes)

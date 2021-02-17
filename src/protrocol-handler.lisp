@@ -4,7 +4,7 @@
   (:documentation "doc"))
 
 (defmethod -clx-xim-handle-message- (clx-xim header data (type (eql *clx-xim-connect-reply*)))
- (format t "*clx-xim-connect-reply*~%")
+ (format t "*clx-xim-connect-reply* ~%")
   (unless (= (major-opcode header) *clx-xim-connect-reply*)
     (return-from -clx-xim-handle-message- NIL))
 
@@ -35,7 +35,7 @@
   (setf (open-state clx-xim) :xim-open-wait-encoding-reply))
 
 (defmethod -clx-xim-handle-message- (clx-xim header data (type (eql *clx-xim-open-reply*)))
-  (format t "handling *clx-xim-open-reply*~%")
+  (format t "handling *clx-xim-open-reply* ~%")
   (unless (eq (open-state clx-xim) :xim-open-wait-open-reply)
     (return-from -clx-xim-handle-message- NIL))
   (let ((frame (-clx-xim-read-frame- data :clx-im-open-reply-fr))
@@ -54,7 +54,7 @@
   )
 
 (defmethod -clx-xim-handle-message- (clx-xim header data (type (eql *clx-xim-query-extension-reply*)))
-  (format t "handling *clx-xim-query-extension-reply*~%")
+  (format t "handling *clx-xim-query-extension-reply* ~%")
   (unless (eq (open-state clx-xim) :xim-open-wait-extension-reply)
     (return-from -clx-xim-handle-message- NIL))
   (let ((frame (-clx-xim-read-frame- data :clx-im-query-extension-reply-fr)))
@@ -64,7 +64,7 @@
   (-clx-xim-send-encoding-negotiation- clx-xim))
 
 (defmethod -clx-xim-handle-message- (clx-xim header data (type (eql *clx-xim-encoding-negotiation-reply*)))
-  (format t "handling *clx-xim-encoding-negotiation-reply*~%")
+  (format t "handling *clx-xim-encoding-negotiation-reply* ~%")
   (unless (eq (open-state clx-xim) :xim-open-wait-encoding-reply)
     (return-from -clx-xim-handle-message- NIL))
   (let ((frame (-clx-xim-read-frame- data :clx-im-encoding-negotiation-reply-fr)))
@@ -77,7 +77,7 @@
       (-clx-change-event-mask- (accept-win clx-xim) :structure-notify NIL))))
 
 (defmethod -clx-xim-handle-message- (clx-xim header data (type (eql *clx-xim-create-ic-reply*)))
-  (format t "handling *clx-xim-create-ic-reply*~%")
+  (format t "handling *clx-xim-create-ic-reply* ~%")
   (let ((frame (-clx-xim-read-frame- data :clx-im-create-ic-reply-fr)))
     (unless (and (current clx-xim)
 		 (eq (major-code (current clx-xim)) *clx-xim-create-ic*)
@@ -88,7 +88,7 @@
       (funcall (callback request) clx-xim (input-context-id frame) (user-data request)))))
 
 (defmethod -clx-xim-handle-message- (clx-xim header data (type (eql *clx-xim-set-event-mask*)))
-  (format t "handling *clx-xim-set-event-mask*~%")
+  (format t "handling *clx-xim-set-event-mask* ~%")
   (let ((frame (-clx-xim-read-frame- data :clx-im-set-event-mask-fr)))
     (unless (and (eq (connect-id clx-xim) (input-method-id frame))
 		 (assoc :set-event-mask (im-callback clx-xim)))
@@ -98,16 +98,27 @@
 
 
 (defmethod -clx-xim-handle-message- (clx-xim header data (type (eql *clx-xim-forward-event*)))
-  (format t "~%handling *clx-xim-forward-event*~%")
+  (format t "~%handling *clx-xim-forward-event* ~%")
   (let ((frame (-clx-xim-read-frame- data :clx-im-forward-event-fr)))
     (when (or (< (header-bytes header) 10);;10 = (/ (+ (size-packet frame) (size key press)) 4)
 	       (not (eq (connect-id clx-xim)
 			(input-method-id frame))))
       (return-from -clx-xim-handle-message- NIL))
-    (let ((key-event (-clx-xim-read-frame- data :xcb-key-press-event-fr)))
+    (let ((key-event (-clx-xim-read-frame- data :clx-im-key-press-event-fr)))
       (when (assoc :forward-event (im-callback clx-xim))
 	;; (print (cdr (assoc :forward-event (im-callback clx-xim))))
 	(funcall (cdr (assoc :forward-event (im-callback clx-xim)))
 		 clx-xim (input-context-id frame) (code key-event) (state key-event) (response-type key-event) (user-data clx-xim)))
       (when (eq (flag frame) *clx-xim-synchronous*)
 	(-clx-xim-sync- clx-xim (input-context-id frame))))))
+
+
+
+(defmethod -clx-xim-handle-message- (clx-xim header data (type (eql *clx-xim-register-triggerkeys*)))
+  (format t "~%handling *clx-xim-register-triggerkeys* ~%")
+  (let ((frame (-clx-xim-read-frame- data :clx-im-register-triggerkeys-fr)))
+    (setf (onkeys clx-xim) (on-key frame)
+	  (offkeys clx-xim) (off-key frame))))
+
+(defmethod -clx-xim-handle-message- (clx-xim header data (type (eql *clx-xim-error*)))
+  (format t "~%handling *clx-xim-error* ~%"))

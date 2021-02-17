@@ -11,6 +11,7 @@
 	   #:clx-xim-destroy-window
 	   #:clx-xim-forward-key
 	   #:clx-xim-open
+	   #:clx-xim-property-changed
 	   #:clx-xim-set-ic-focus
 	   #:clx-xim-set-im-callback
 	   #:clx-xim-set-log-handler
@@ -64,8 +65,8 @@
    (imattr :initform (make-hash-table :test #'equal) :accessor imattr)
    (icattr :initform (make-hash-table :test #'equal) :accessor icattr)
    extensions
-   onKeys
-   offKeys
+   onkeys
+   offkeys
    ;;request
    current
    queue
@@ -294,9 +295,10 @@
 	     (change-property window atom-name
 			      data :string 8
 				   :mode :append)
-	     (print (list length
-			  (find-atom display atom-name)
-			  0 0 0))
+	     (format t "~A~%" (list length
+				    (find-atom display atom-name)
+				    0 0 0))
+	     (format t "~A~%" data)
 	     (send-event window
 			 :client-message
 			 0
@@ -306,7 +308,8 @@
 			 :data (list length
 				     (find-atom display atom-name)
 				     0 0 0)))
-      (progn (send-event window
+      (progn (format t "~A~%" (padding-data-list data *clx-xim-cm-data-size*))
+	     (send-event window
 			 :client-message
 			 0
 			 :window window
@@ -479,7 +482,7 @@
   (setf (state-phase (connect-state clx-xim)) :xim-connect-check-server)
   ((lambda (check-server)
      (setf (index check-server) 0)
-     (setf (requestor-window check-server) 0)
+     (setf (requestor-window check-server) NIL)
      (setf (window check-server) 0)
      (setf (subphase check-server) :xim-connect-check-server-prepare))
    (check-server (connect-state clx-xim)))
@@ -646,7 +649,7 @@
 							 :input-context-id ic
 							 :flag *clx-xim-synchronous*
 							 :sequence-number (third event)))
-			     (obj-to-data (make-instance 'xcb-key-press-event-fr
+			     (obj-to-data (make-instance 'clx-im-key-press-event-fr
 							 :response-type (pop event)
 							 :code (pop event)
 							 :x-sequence (pop event)

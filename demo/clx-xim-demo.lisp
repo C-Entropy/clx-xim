@@ -34,10 +34,14 @@
       (ic NIL))
   (defun set-up-clx-xim (display screen
 			 &key im-callback logger)
-    (setf clx-xim (make-clx-xim display screen))
+    (setf clx-xim (make-clx-xim display screen :imname "@im=test_server"
+				))
     (clx-xim-set-im-callback clx-xim im-callback NIL)
+    (print "aaa")
     (clx-xim-set-log-handler clx-xim logger)
-    (clx-xim-open clx-xim #'open-callback T NIL))
+    (print "aa")
+    (clx-xim-open clx-xim #'open-callback T NIL)
+    (print "a"))
   (defun print-clx-xim ()
     (format t "~A~%" (im-callback clx-xim)))
   (defun get-clx-xim ()
@@ -125,7 +129,6 @@
 		    :im-callback (list (cons :forward-event #'forward-event)
 				       (cons :commit-string #'commit-string))
 		    :logger #'logger)
-
     (event-loop)))
 
 
