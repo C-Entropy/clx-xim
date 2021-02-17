@@ -19,31 +19,23 @@
      (minor-opcode :u1)
      (header-bytes :u2)))
 
-;; (defmethod -clx-xim-read-frame- (data (type (eql :clx-im-packet-header-fr)) &key)
-;;   (setf (major-opcode obj) (-clx-xim-read-frame- :u1 data))
-;;   (setf (minor-opcode obj) (-clx-xim-read-frame- :u1 data))
-;;   (setf (header-bytes obj) (-clx-xim-read-frame- :u2 data))
-;;   obj)
-
 (define-packet clx-im-connect-reply-fr
     ((server-major-protocol-version :u2)
      (server-minor-protocol-version :u2)))
 
-(defun clx-im-str-fr-size (string)
-  (1+ (length string)))
-
 (define-packet clx-xim-open-fr
     ((length-of-string :u1)
-     (s-string :s-string))
+     (s-string :s-string)
+     (pads :pads :length (pad-4 (+ 1
+				   length-of-string))))
   :opcode *clx-xim-open*
   :size-packet
-  (align-s-4 (clx-im-str-fr-size s-string) NIL))
+  (align-s-4 (+ 1
+		(length s-string))
+	     NIL))
 
 (defmethod obj-to-data :before ((frame clx-xim-open-fr))
   (setf (length-of-string frame) (length (s-string frame))))
-
-(defmethod obj-to-data :around ((frame clx-xim-open-fr))
-  (call-next-method))
 
 (define-packet clx-im-ximattr-fr
     ((attribute-id :u2)
@@ -244,5 +236,4 @@
     ((input-method-id :u2)
      (input-context-id :u2))
   :size-packet 4
-  :opcode *clx-xim-sync-reply*
-  )
+  :opcode *clx-xim-sync-reply*)

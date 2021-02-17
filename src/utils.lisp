@@ -33,12 +33,15 @@
   `(setf ,obj1 (funcall ,fun ,obj1 ,@objs)))
 
 (defmacro =+ (num1 &rest nums)
+  "add nums to num1 and set num1 to result, finally return result"
   `(setf ,num1 (+ ,num1 ,@nums)))
 
 (defmacro =- (num1 &rest nums)
+  "subtract nums from num1 and set num1 to result, finally return result"
   `(setf ,num1 (- ,num1 ,@nums)))
 
 (defmacro =-append (obj1 &rest objs)
+  "append objs to obj1 and set obj1 to result, finally return result"
   `(setf ,obj1 (append ,@objs ,obj1)))
 
 ;; (defmacro =+ (num1 &rest nums)
