@@ -169,6 +169,12 @@
 		      result))
   :opcode *clx-xim-create-ic*)
 
+(defmethod obj-to-data :before ((frame clx-im-create-ic-fr))
+  (let ((result 0))
+    (dolist (item (items frame))
+      (=+ result (size-packet item)))
+    (setf (size frame) result)))
+
 (define-packet clx-im-create-ic-reply-fr
     ((input-method-id :u2)
      (input-context-id :u2))
