@@ -672,6 +672,6 @@
 
 (defun -clx-xim-sync- (clx-xim ic)
   ;; (format t "~%-clx-xim-sync- ~A~%" ic)
-  (-clx-xim-send-frame- clx-xim (make-instance 'clx-xim-sync-reply-fr
+  (-clx-xim-send-frame- clx-xim (make-instance 'clx-im-sync-reply-fr
 					       :input-method-id (connect-id clx-xim)
 					       :input-context-id ic)))
