@@ -185,8 +185,9 @@
     ((input-method-id :u2)
      (input-context-id :u2)
      (size :u2)
-     (pad :pads :lenth 2)
+     (pad :pads :length 2)
      (items :clx-im-xicattribute-fr))
+  :opcode *clx-xim-set-ic-values*
   :size-packet (+ 8 (let ((result 0))
 		      (dolist (item items result)
 			(=+ result (size-packet item))))))

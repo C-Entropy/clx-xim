@@ -3,7 +3,12 @@
 (defgeneric -clx-xim-handle-message- (clx-xim header data type)
   (:documentation "doc"))
 
-(defmethod -clx-xim-handle-message- (clx-xim header data (type (eql *clx-xim-connect-reply*)))
+(defmacro define-handler (code &body body)
+  `(defmethod -clx-xim-handle-message- (clx-xim header data (type (eql ,code)))
+     ,@body))
+
+
+(define-handler  *clx-xim-connect-reply*
  (format t "*clx-xim-connect-reply* ~%")
   (unless (= (major-opcode header) *clx-xim-connect-reply*)
     (return-from -clx-xim-handle-message- NIL))
@@ -11,6 +16,16 @@
     (let ((reply-frame (-clx-xim-read-frame- data :clx-im-connect-reply-fr)))
       (-clx-xim-send-open- clx-xim)
       (setf (state-phase (connect-state clx-xim)) :xim-connect-done)))
+
+
+;; (defmethod -clx-xim-handle-message- (clx-xim header data (type (eql *clx-xim-connect-reply*)))
+;;  (format t "*clx-xim-connect-reply* ~%")
+;;   (unless (= (major-opcode header) *clx-xim-connect-reply*)
+;;     (return-from -clx-xim-handle-message- NIL))
+
+;;     (let ((reply-frame (-clx-xim-read-frame- data :clx-im-connect-reply-fr)))
+;;       (-clx-xim-send-open- clx-xim)
+;;       (setf (state-phase (connect-state clx-xim)) :xim-connect-done)))
 
 (defun make-default-ext ()
   "XIM_EXT_MOVE"
@@ -152,3 +167,6 @@
     (when (eq *clx-xim-lookup-chars*
 	      (logand (flag frame) *clx-xim-lookup-both*))
       (-clx-xim-sync- clx-xim (input-context-id frame)))))
+
+(defmethod -clx-xim-handle-message- (clx-xim header data (type (eql *clx-xim-error*)))
+  (format t "~%handling *clx-xim-error* ~%"))

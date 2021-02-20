@@ -705,17 +705,15 @@
 (defun clx-xim-set-ic-values (clx-xim ic callback user-data &rest rest)
   (unless (eq (open-state clx-xim)
 	      :xim-open-done)
-    (return-from clx-xim-create-ic NIL))
+    (return-from clx-xim-set-ic-values NIL))
   (let ((queue (make-instance 'clx-xim-request
 			      :major-code *clx-xim-set-ic-values* :minor-code 0
 			      :callback callback :user-data user-data
 			      :frame (make-instance 'clx-im-set-ic-values-fr
 						    :input-method-id (connect-id clx-xim)
-						    :input-context-id ic
-						    :))))
+						    :input-context-id ic))))
     (dolist (item rest)
       ;; (print item)
-      (=+ (size (frame queue)) 1)
       (when (or (string= (car item) *clx-xim-xnclient-window*)
 		(string= (car item) *clx-xim-xnfocus-window*))
 	(setf (client-window clx-xim) (second item)))
@@ -732,4 +730,5 @@
 				 :value-length (clx-im-ic-attr-size (type-of-value icattr))
 				 :value (clx-im-get-ic-value (second item) (type-of-value icattr)))
 			 (items (frame queue)))))))
-    (=-append (queue clx-xim) (list queue))))
+    (=-append (queue clx-xim) (list queue)))
+  (-clx-xim-process-queue- clx-xim))
