@@ -617,11 +617,9 @@
 			      :major-code *clx-xim-create-ic* :minor-code 0
 			      :callback callback :user-data user-data
 			      :frame (make-instance 'clx-im-create-ic-fr
-						    :size 0
 						    :input-method-id (connect-id clx-xim)))))
     (dolist (item rest)
       ;; (print item)
-      (=+ (size (frame queue)) 1)
       (when (or (string= (car item) *clx-xim-xnclient-window*)
 		(string= (car item) *clx-xim-xnfocus-window*))
 	(setf (client-window clx-xim) (second item)))
@@ -712,8 +710,9 @@
 			      :major-code *clx-xim-set-ic-values* :minor-code 0
 			      :callback callback :user-data user-data
 			      :frame (make-instance 'clx-im-set-ic-values-fr
-						    :size 0
-						    :input-method-id (connect-id clx-xim)))))
+						    :input-method-id (connect-id clx-xim)
+						    :input-context-id ic
+						    :))))
     (dolist (item rest)
       ;; (print item)
       (=+ (size (frame queue)) 1)
