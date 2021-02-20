@@ -1,26 +1,4 @@
-(defpackage clx-xim
-  (:use #:cl
-	#:ximproth
-	#:utils
-	#:xlib)
-  (:import-from #:uiop #:getenv)
-  (:export #:make-clx-xim
-	   #:clx-xim-client-message
-	   #:clx-xim-create-ic
-	   #:clx-xim-create-nested-list
-	   #:clx-xim-destroy-window
-	   #:clx-xim-forward-key
-	   #:clx-xim-open
-	   #:clx-xim-property-changed
-	   #:clx-xim-set-ic-focus
-	   #:clx-xim-set-im-callback
-	   #:clx-xim-set-log-handler
-	   ;;class clx-xim itself
-	   ;; #:display
-	   ;; #:logger
-	   #:im-callback))
 (in-package #:clx-xim)
-
 
 (defparameter *xim-server-category* "@server=")
 (defparameter *xim-locale-category* "@locale=")
@@ -102,13 +80,13 @@
 
 (defun clx-xim-make-im-name (im-name)
   "make im name using im-name, cutting down '@im=', then return the left part"
-  (funcall (lambda (length)
-	     (cond ((and (> (length im-name) length)
-			 (string= (subseq im-name 0 length) "@im="))
-		    (subseq im-name length))
-		   (t
-		    NIL)))
-	   (length "@im=")))
+  ((lambda (length)
+     (cond ((and (> (length im-name) length)
+		 (string= (subseq im-name 0 length) "@im="))
+	    (subseq im-name length))
+	   (t
+	    NIL)))
+   (length "@im=")))
 
 (defun make-clx-xim (display screen
 		     &key imname)
@@ -174,8 +152,7 @@
   (get-property (root-window clx-xim)
 		:xim_servers
 		:transform #'(lambda (atom-id)
-			       (atom-name (display clx-xim) atom-id))
-		))
+			       (atom-name (display clx-xim) atom-id))))
 
 (defun -clx-xim-check-server-name- (clx-xim)
   "make sure server-name from env is string= to IM server get from Window"
@@ -187,9 +164,8 @@
 (defun -check-next-server- (clx-xim)
   ((lambda (check-server)
      (setf (subphase check-server) :xim-connect-check-server-prepare
-	   (index check-server) (1+ (index check-server)))
-     (when (requestor-window check-server)
-       (destroy-window (requestor-window check-server))))
+	   (index check-server) (1+ (index check-server))
+	   (requestor-window check-server) NIL))
    (check-server (connect-state clx-xim))))
 
 (defun -clx-xim-check-server-prepare- (clx-xim)
@@ -232,27 +208,28 @@
   ;; 	(uiop:split-string (subseq address (1+ =-pos)) :separator ","))))
   ;;take values apart <<<<
   )
-(defun -clx-xim-check-server-tranport-wait- (clx-xim)
+
+
+(defun -clx-xim-check-server-transport-wait- (clx-xim a b c d e f)
   (let ((display (display clx-xim)))
     (event-case (display)
       ((:selection-notify) (window selection target property time)
-       ;; (print ":selection-notify")
+       (format t "~A ~A ~A ~A ~A" window selection target property time)
        (unless (eq window
 		   (requestor-window (check-server (connect-state clx-xim))))
-	 (return-from -clx-xim-check-server-tranport-wait- :action-yield))
+	 (return-from -clx-xim-check-server-transport-wait- :action-yield))
 
        (unless property
-	 (return-from -clx-xim-check-server-tranport-wait- :action-failed))
+	 (return-from -clx-xim-check-server-transport-wait- :action-failed))
        (let ((address (get-property window
 				    :transport
 				    :delete-p T
 				    :transform #'code-char
-				    :result-type 'string
-				    )))
+				    :result-type 'string)))
 	 (unless address
-	   (return-from -clx-xim-check-server-tranport-wait- :action-failed))
+	   (return-from -clx-xim-check-server-transport-wait- :action-failed))
 	 (unless (setf (trans-addr clx-xim) (-clx-xim-check-transport- address))
-	   (return-from -clx-xim-check-server-tranport-wait- :action-failed))
+	   (return-from -clx-xim-check-server-transport-wait- :action-failed))
 	 (destroy-window window)
 	 (setf (requestor-window (check-server (connect-state clx-xim))) NIL
 	       (im-window clx-xim) (window (check-server (connect-state clx-xim))))
@@ -261,7 +238,36 @@
 		      (index (check-server (connect-state clx-xim)))
 		      (server-atoms clx-xim)))
 	       (atoms clx-xim))
-	 (return-from -clx-xim-check-server-tranport-wait- :action-accept))))))
+	 (return-from -clx-xim-check-server-transport-wait- :action-accept))))))
+
+
+
+;; (defun -clx-xim-check-server-transport-wait- (clx-xim type window selection target property time)
+;;   (print "-clx-xim-check-server-transport-wait--------")
+;;   (unless (and (eq window
+;; 		   (requestor-window (check-server (connect-state clx-xim))))
+;; 	       (eq type :selection-notify))
+;;     (return-from -clx-xim-check-server-transport-wait- :action-yield))
+;;   (unless property
+;;     (print ":action-failed")
+;;     (return-from -clx-xim-check-server-transport-wait- :action-failed))
+;;   (let ((address (get-property window
+;; 			       :transport
+;; 			       :delete-p T
+;; 			       :transform #'code-char
+;; 			       :result-type 'string)))
+;;     (unless (and address
+;; 		 (setf (trans-addr clx-xim) (-clx-xim-check-transport- address)))
+;;       (return-from -clx-xim-check-server-transport-wait- :action-failed))
+;;     (destroy-window window)
+;;     (setf (requestor-window (check-server (connect-state clx-xim))) NIL
+;; 	  (im-window clx-xim) (window (check-server (connect-state clx-xim))))
+;;     (push (cons :server-name
+;; 		(nth
+;; 		 (index (check-server (connect-state clx-xim)))
+;; 		 (server-atoms clx-xim)))
+;; 	  (atoms clx-xim))
+;;     (return-from -clx-xim-check-server-transport-wait- :action-accept)))
 
 (defun -clx-xim-connect-prepare- (clx-xim)
   (setf (im-client-window clx-xim)
@@ -383,7 +389,9 @@
   ;; (format t  "-clx-xim-send-open-")
   )
 
-(defun -clx-xim-connect-wait-reply- (clx-xim)
+
+
+(defun -clx-xim-connect-wait-reply- (clx-xim a b c e f)
   (let ((display (display clx-xim)))
     (event-case (display)
       ((:client-message) (window type format data)
@@ -400,9 +408,29 @@
 	   (when (-clx-xim-send-open- clx-xim)
 	     (return-from -clx-xim-connect-wait-reply- :action-accept))))))))
 
-(defun -clx-xim-preconnect-im- (clx-xim)
+
+
+;; (defun -clx-xim-connect-wait-reply- (clx-xim event-type window type format data)
+;;   (unless (and (eq event-type :client-message)
+;; 	       (eq type :_xim_protocol))
+;;     (return-from -clx-xim-connect-wait-reply- :action-yield))
+;;   (destructuring-bind (header message)
+;; 	   (-clx-read-xim-message- (display clx-xim)
+;; 				   (accept-win clx-xim)
+;; 				   format
+;; 				   (list->vector (coerce data 'list)))
+;; 	 (unless (= (major-opcode header) *clx-xim-connect-reply*)
+;; 	   (return-from -clx-xim-connect-wait-reply- :action-yield))
+;; 	 (let ((reply-frame (-clx-xim-read-frame- message :clx-im-connect-reply-fr)))
+;; 	   (when (-clx-xim-send-open- clx-xim)
+;; 	     (return-from -clx-xim-connect-wait-reply- :action-accept)))))
+
+
+
+(defun clx-xim-preconnect-im (clx-xim event-type &key window selection target property time type format data)
   (block block-preconnect
     (case (state-phase (connect-state clx-xim))
+      (print (subphase (check-server (connect-state clx-xim))))
       (:xim-connect-check-server
        (when (eq (length (server-atoms clx-xim))
 		 (index (check-server (connect-state clx-xim))))
@@ -424,17 +452,18 @@
 	  (setf (subphase (check-server (connect-state clx-xim)))
 		:xim-connect-check-server-transport-wait))
 	 (:xim-connect-check-server-transport-wait
-
-	  (case (-clx-xim-check-server-tranport-wait- clx-xim)
+	  (case (-clx-xim-check-server-transport-wait- clx-xim event-type window selection target property time)
 	    (:action-accept
+	     (print ":xim-connect-connect:xim-connect-connect:xim-connect-connect:xim-connect-connect")
 	     (setf (state-phase (connect-state clx-xim)) :xim-connect-connect
 		   (connect-subphase (connect-state clx-xim)) :xim-connect-connect-prepare))
 	    (:action-failed
 	     (-check-next-server- clx-xim))
 	    (:action-yield
-	     (return-from -clx-xim-preconnect-im- NIL)))
+	     (return-from clx-xim-preconnect-im NIL)))
 	  (return-from block-preconnect))))
       (:xim-connect-connect
+       (print (connect-subphase (connect-state clx-xim)))
        (case (connect-subphase (connect-state clx-xim))
 	 (:xim-connect-connect-prepare
 	  (-clx-xim-connect-prepare- clx-xim)
@@ -446,25 +475,24 @@
 	     (return-from block-preconnect))
 	    (:action-failed
 	     (setf (state-phase (connect-state clx-xim)) :xim-connect-fail)
-	     (return-from -clx-xim-preconnect-im-))
+	     (return-from clx-xim-preconnect-im))
 	    (:action-yield
-	     (return-from -clx-xim-preconnect-im- NIL))))
+	     (return-from clx-xim-preconnect-im NIL))))
 	 (:xim-connect-connect-wait-reply
-	  (return-from -clx-xim-preconnect-im-)
-	  ;; (format t ":xim-connect-connect-wait-reply ~A~%" (-clx-xim-connect-wait-reply- clx-xim))
-	  ;; (setf (state-phase (connect-state clx-xim)) :xim-connect-done)
-	  ;; (case (-clx-xim-connect-wait-reply- clx-xim)
-	  ;;   (:action-accept
-	  ;;    (setf (state-phase (connect-state clx-xim)) :xim-connect-done)
-	  ;;    (return-from block-preconnect))
-	  ;;   (:action-failed
-	  ;;    (setf (state-phase (connect-state clx-xim)) :xim-connect-fail)
-	  ;;    (return-from block-preconnect))
-	  ;;   (:action-yield
-	  ;;    (return-from -clx-xim-preconnect-im- NIL)))
+	  (case (-clx-xim-connect-wait-reply- clx-xim event-type window type format data)
+	    (:action-accept
+	     (setf (state-phase (connect-state clx-xim)) :xim-connect-done)
+	     (return-from block-preconnect))
+	    (:action-failed
+	     (setf (state-phase (connect-state clx-xim)) :xim-connect-fail)
+	     (return-from block-preconnect))
+	    (:action-yield
+	     (return-from clx-xim-preconnect-im NIL)))
 	  )))
-      (otherwise (return-from -clx-xim-preconnect-im-))))
-    (-clx-xim-preconnect-im- clx-xim))
+      (otherwise (print "return")
+       (print (state-phase (connect-state clx-xim)))
+       (return-from clx-xim-preconnect-im))))
+  (clx-xim-preconnect-im clx-xim event-type :window window :selection selection :target target :property property :time time :type type :format format :data data))
 
 (defun -clx-xim-open- (clx-xim)
   (setf (open-state clx-xim) :xim-open-invalid
@@ -486,7 +514,7 @@
      (setf (window check-server) 0)
      (setf (subphase check-server) :xim-connect-check-server-prepare))
    (check-server (connect-state clx-xim)))
-  (-clx-xim-preconnect-im- clx-xim))
+  (clx-xim-preconnect-im clx-xim NIL))
 
 
 (defun clx-xim-open (clx-xim clx-xim-open-callback auto-connect user-data)
@@ -675,3 +703,34 @@
   (-clx-xim-send-frame- clx-xim (make-instance 'clx-im-sync-reply-fr
 					       :input-method-id (connect-id clx-xim)
 					       :input-context-id ic)))
+
+(defun clx-xim-set-ic-values (clx-xim ic callback user-data &rest rest)
+  (unless (eq (open-state clx-xim)
+	      :xim-open-done)
+    (return-from clx-xim-create-ic NIL))
+  (let ((queue (make-instance 'clx-xim-request
+			      :major-code *clx-xim-set-ic-values* :minor-code 0
+			      :callback callback :user-data user-data
+			      :frame (make-instance 'clx-im-set-ic-values-fr
+						    :size 0
+						    :input-method-id (connect-id clx-xim)))))
+    (dolist (item rest)
+      ;; (print item)
+      (=+ (size (frame queue)) 1)
+      (when (or (string= (car item) *clx-xim-xnclient-window*)
+		(string= (car item) *clx-xim-xnfocus-window*))
+	(setf (client-window clx-xim) (second item)))
+      (let ((icattr (-clx-xim-find-icattr- clx-xim (car item))))
+	(if (eq (type-of-value icattr) *ximtype-nest*)
+	    (push (make-instance 'clx-im-xicattribute-fr
+					:attribute-id (attribute-id icattr)
+					:value-length (cdadr item)
+					:value (caadr item))
+			 (items (frame queue)))
+	    (progn ;; (print item)
+		   (push (make-instance 'clx-im-xicattribute-fr
+				 :attribute-id (attribute-id icattr)
+				 :value-length (clx-im-ic-attr-size (type-of-value icattr))
+				 :value (clx-im-get-ic-value (second item) (type-of-value icattr)))
+			 (items (frame queue)))))))
+    (=-append (queue clx-xim) (list queue))))

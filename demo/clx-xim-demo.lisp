@@ -34,14 +34,10 @@
       (ic NIL))
   (defun set-up-clx-xim (display screen
 			 &key im-callback logger)
-    (setf clx-xim (make-clx-xim display screen :imname "@im=test_server"
-				))
+    (setf clx-xim (make-clx-xim display screen :imname "@im=test_server"))
     (clx-xim-set-im-callback clx-xim im-callback NIL)
-    (print "aaa")
     (clx-xim-set-log-handler clx-xim logger)
-    (print "aa")
-    (clx-xim-open clx-xim #'open-callback T NIL)
-    (print "a"))
+    (clx-xim-open clx-xim #'open-callback T NIL))
   (defun print-clx-xim ()
     (format t "~A~%" (im-callback clx-xim)))
   (defun get-clx-xim ()
@@ -90,46 +86,42 @@
     (display-finish-output display))
 
   (defun event-loop ()
-    "doc"
-    (event-case (display)
-      ((:client-message) (window type format data)
-       (format t  ":client-message type ~A~%" type)
+    (let ((event (process-event display
+				:force-output-p t))
+      (print event)))
 
-       (case type
-	 (:_xim_protocol (clx-xim-client-message (get-clx-xim) format data))))
+  ;; (defun event-loop ();   (unwind-protect
+  ;; 	 (loop
+  ;; 	   (event-case (display)
+  ;; 	     ((:client-message) (window type format data)
+  ;; 	      (format t  ":client-message type ~A~%" type)
+  ;; 	      (case type
+  ;; 		(:_xim_protocol (clx-xim-client-message (get-clx-xim) format data))))
 
-      ((:property-notify) (window atom state time)
-       (case atom
-	 (:xim_servers (clx-xim-property-changed (get-clx-xim) window))))
+  ;; 	     ((:property-notify) (window atom state time)
+  ;; 	      (case atom
+  ;; 		(:xim_servers (clx-xim-property-changed (get-clx-xim) window))))
 
-      ((:destroy-notify) (window)
-       (print ":destory-notify")
-       ;; (clx-xim-destory-window (get-clx-xim) window)
-       )
+  ;; 	     ((:destroy-notify) (window)
+  ;; 	      (print ":destory-notify"))
+  ;; 	     ((:key-release) (event-window sequence code x y state time root root-x root-y child same-screen-p)
+  ;; 	      (clx-xim-forward-key (get-clx-xim) (get-ic) (list 3 code sequence time root event-window child  root-x root-y x y state same-screen-p)))
+  ;; 	     ((:key-press) (event-window sequence code x y state time root root-x root-y child same-screen-p)
+  ;; 	      (clx-xim-forward-key (get-clx-xim) (get-ic) (list 2 code sequence time root event-window child  root-x root-y x y state same-screen-p)))))
+    ;;     (close-display display)))
+    )
 
-      ((:key-release) (event-window sequence code x y state time root root-x root-y child same-screen-p)
-       ;; (format t "~%>>:key release ~{~A ~}  ~%" (list event-window sequence code x y state time root root-x root-y child same-screen-p))
-
-       ;; (format t "~%>>:key release ~A ~%" (keycode->character (get-display) code state))
-       (clx-xim-forward-key (get-clx-xim) (get-ic) (list 3 code sequence time root event-window child  root-x root-y x y state same-screen-p))
-       )
-
-      ((:key-press) (event-window sequence code x y state time root root-x root-y child same-screen-p)
-       ;; (format t "~%>>:key press ~{~A ~}  ~%" (list event-window sequence code x y state time root root-x root-y child same-screen-p))
-       ;; (format t "~%>>:key press ~A ~%" (keycode->character (get-display) code state))
-       (clx-xim-forward-key (get-clx-xim) (get-ic) (list 2 code sequence time root event-window child  root-x root-y x y state same-screen-p))
-       )
-      )
-
-    (event-loop))
   (defun start-window ()
     (make-window)
     (display-window)
-    (set-up-clx-xim display screen
-		    :im-callback (list (cons :forward-event #'forward-event)
-				       (cons :commit-string #'commit-string))
-		    :logger #'logger)
-    (event-loop)))
+    ;; (set-up-clx-xim display screen
+    ;; 		    :im-callback (list (cons :forward-event #'forward-event)
+    ;; 				       (cons :commit-string #'commit-string))
+    ;; 		    :logger #'logger)
+    (event-loop)
+    ;; (dotimes (c 15)
+    ;;   (event-loop))
+    ))
 
 
 (defun start-demo ()

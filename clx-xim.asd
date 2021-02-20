@@ -3,14 +3,15 @@
   :author "I-Entropy"
   :license ""
   :depends-on ("clx" "flexi-streams")
-  :components ((:module "src"
+  :components ((:file "packages")
+	       (:module "src" :depends-on ("packages")
                 :components
                 ((:file "ximproth" ;; :depends-on ("clx-xim")
 			)
-		 (:file "clx-xim" :depends-on ("utils" "ximproth"))
-		 (:file "protrocol-handler" :depends-on ("ximproth" "clx-xim"))
-		 (:file "utils" :depends-on ("ximproth"))
-		 (:file "ximproth-packet" :depends-on ("utils" "ximproth" "clx-xim")))))
+		 (:file "utils")
+		 (:file "ximproth-packet" :depends-on ("utils" "ximproth"))
+		 (:file "protrocol-handler" :depends-on ("ximproth" "utils"))
+		 (:file "clx-xim" :depends-on ("utils" "ximproth" "protrocol-handler")))))
   :description "input method for clx"
   :in-order-to ((test-op (test-op "clx-xim/tests"))))
 

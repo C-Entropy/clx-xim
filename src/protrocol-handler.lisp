@@ -30,7 +30,9 @@
 (defun -clx-xim-send-encoding-negotiation- (clx-xim)
   (let ((encoding-negotiation (make-instance 'clx-im-encoding-negotiation-fr
 					     :input-method-id (connect-id clx-xim)
-					     :encodings '("COMPOUND_TEXT"))))
+					     :encodings '("UTF8_STRING"
+;; "COMPOUND_TEXT"
+							  ))))
     (-clx-xim-send-frame- clx-xim encoding-negotiation))
   (setf (open-state clx-xim) :xim-open-wait-encoding-reply))
 
@@ -100,17 +102,21 @@
 (defmethod -clx-xim-handle-message- (clx-xim header data (type (eql *clx-xim-forward-event*)))
   (format t "~%handling *clx-xim-forward-event* ~%")
   (let ((frame (-clx-xim-read-frame- data :clx-im-forward-event-fr)))
-    (when (or (< (header-bytes header) 10);;10 = (/ (+ (size-packet frame) (size key press)) 4)
-	       (not (eq (connect-id clx-xim)
-			(input-method-id frame))))
-      (return-from -clx-xim-handle-message- NIL))
-    (let ((key-event (-clx-xim-read-frame- data :clx-im-key-press-event-fr)))
-      (when (assoc :forward-event (im-callback clx-xim))
-	;; (print (cdr (assoc :forward-event (im-callback clx-xim))))
-	(funcall (cdr (assoc :forward-event (im-callback clx-xim)))
-		 clx-xim (input-context-id frame) (code key-event) (state key-event) (response-type key-event) (user-data clx-xim)))
-      (when (eq (flag frame) *clx-xim-synchronous*)
-	(-clx-xim-sync- clx-xim (input-context-id frame))))))
+    (-clx-xim-sync- clx-xim (input-context-id frame)))
+
+;; (let ((frame (-clx-xim-read-frame- data :clx-im-forward-event-fr)))
+;;     (when (or (< (header-bytes header) 10);;10 = (/ (+ (size-packet frame) (size key press)) 4)
+;; 	       (not (eq (connect-id clx-xim)
+;; 			(input-method-id frame))))
+;;       (return-from -clx-xim-handle-message- NIL))
+;;     (let ((key-event (-clx-xim-read-frame- data :clx-im-key-press-event-fr)))
+;;       (when (assoc :forward-event (im-callback clx-xim))
+;; 	;; (print (cdr (assoc :forward-event (im-callback clx-xim))))
+;; 	(funcall (cdr (assoc :forward-event (im-callback clx-xim)))
+;; 		 clx-xim (input-context-id frame) (code key-event) (state key-event) (response-type key-event) (user-data clx-xim)))
+;;       (when (eq (flag frame) *clx-xim-synchronous*)
+;; 	(-clx-xim-sync- clx-xim (input-context-id frame)))))
+  )
 
 
 
@@ -122,3 +128,27 @@
 
 (defmethod -clx-xim-handle-message- (clx-xim header data (type (eql *clx-xim-error*)))
   (format t "~%handling *clx-xim-error* ~%"))
+
+(defmethod -clx-xim-handle-message- (clx-xim header data (type (eql *clx-xim-commit*)))
+  (format t "~%handling *clx-xim-commit* ~%")
+  (when (< (* 4(header-bytes header)) 6)
+    (return-from -clx-xim-handle-message-))
+  (let ((frame (-clx-xim-read-frame- data :clx-im-commit-fr)))
+    (unless (eq (connect-id clx-xim) (input-method-id frame))
+      (return-from -clx-xim-handle-message-))
+    (when (assoc :commit-string (im-callback clx-xim))
+      (funcall (cdr (assoc :commit-string (im-callback clx-xim)))
+	       clx-xim
+	       (input-context-id frame)
+	       (flag frame)
+	       (commit-string (commit frame))
+	       (if (logT (logand (flag frame) *clx-xim-lookup-keysym*))
+		   (key-sym frame)
+		   NIL)
+	       (if (logT (logand (flag frame) *clx-xim-lookup-keysym*))
+		   0
+		   1)
+	       (user-data clx-xim)))
+    (when (eq *clx-xim-lookup-chars*
+	      (logand (flag frame) *clx-xim-lookup-both*))
+      (-clx-xim-sync- clx-xim (input-context-id frame)))))

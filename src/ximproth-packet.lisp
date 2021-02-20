@@ -1,4 +1,5 @@
 (in-package #:clx-xim)
+
 (define-packet clx-im-connect-fr
     ((byte-order :u1)
      (pad :u1)
@@ -170,15 +171,31 @@
   :opcode *clx-xim-create-ic*)
 
 (defmethod obj-to-data :before ((frame clx-im-create-ic-fr))
-  (let ((result 0))
+  (with-slots (size) frame
+    (setf size 0)
     (dolist (item (items frame))
-      (=+ result (size-packet item)))
-    (setf (size frame) result)))
+      (=+ size (size-packet item)))))
 
 (define-packet clx-im-create-ic-reply-fr
     ((input-method-id :u2)
      (input-context-id :u2))
   :size-packet 4)
+
+(define-packet clx-im-set-ic-values-fr
+    ((input-method-id :u2)
+     (input-context-id :u2)
+     (size :u2)
+     (pad :pads :lenth 2)
+     (items :clx-im-xicattribute-fr))
+  :size-packet (+ 8 (let ((result 0))
+		      (dolist (item items result)
+			(=+ result (size-packet item))))))
+
+(defmethod obj-to-data :before ((frame clx-im-set-ic-values-fr))
+  (with-slots (size) frame
+    (setf size 0)
+    (dolist (item (items frame))
+      (=+ size (size-packet item)))))
 
 
 (define-packet clx-im-set-event-mask-fr
@@ -257,3 +274,21 @@
      (on-key :clx-im-ximtriggerkey-fr :bytes on-key-length)
      (off-key-length :u4)
      (off-key :clx-im-ximtriggerkey-fr :bytes off-key-length)))
+
+(define-packet commit-both
+    ((pad :u2)
+     (key-sym :u4)
+     (size :u2)
+     (commit-string :byte-n-seq :length size)
+     (pad-1 :pads :length (pad-4 (+ 2 size)))))
+
+(define-packet commit-chars
+    ((size :u2)
+     (commit-string :byte-n-seq :length size)
+     (pad :pads :length (pad-4 size))))
+
+(define-packet clx-im-commit-fr
+    ((input-method-id :u2)
+     (input-context-id :u2)
+     (flag :u2)
+     (commit :type flag)))

@@ -1,33 +1,4 @@
-(defpackage #:utils
-  (:use #:cl
-	#:ximproth)
-  (:export #:=+
-	   #:=-
-	   #:=-append
-	   #:-clx-xim-read-frame-
-	   #:byte-to-data
-	   #:clx-proto-frame-opcode
-	   #:defclass-easy
-	   #:data-to-byte
-	   #:define-class-easy
-	   #:define-packet
-	   #:get-keyword
-	   #:list->vector
-	   #:load-bytes
-	   #:obj-to-data
-	   #:pad-2
-	   #:pad-4
-	   #:size-packet
-	   #:strings-bytes
-	   #:s-strings-bytes
-	   #:with-gensyms
-	   #:align-to
-	   #:align-2
-	   #:align-4
-	   #:align-s-2
-	   #:align-s-4))
-
-(in-package #:utils)
+(in-package #:clx-xim)
 
 (defun cal-set (fun obj1 objs)
   `(setf ,obj1 (funcall ,fun ,obj1 ,@objs)))
@@ -267,6 +238,9 @@
 (defmethod -clx-xim-read-frame- (byte (type (eql :s-string)) &key length)
   (flexi-streams:octets-to-string (read-byte-n-seq byte length)))
 
+(defmethod -clx-xim-read-frame- (byte (type (eql :byte-n-seq)) &key length)
+ (read-byte-n-seq byte length))
+
 (defmethod -clx-xim-read-frame- (byte (type (eql :u1)) &key)
   (load-bytes 1 byte))
 
@@ -281,29 +255,6 @@
 
 (defmethod -clx-xim-read-frame- (byte (type (eql :bytes)) &key length)
   (load-bytes length byte))
-
-;; (defmethod -clx-xim-read-frame- :around (byte (type (eql :clx-im-ximattr-fr)) &key bytes)
-;;   (let ((frames NIL))
-;;     (labels ((read-frame ()
-;; 	       (push (call-next-method) frames)
-;; 	       (setf bytes (- bytes (size-packet (car frames))))
-;; 	       (when (> bytes 0)
-;; 		 (read-frame))))
-;;       (read-frame))
-;;     frames))
-
-;; (defmethod -clx-xim-read-frame- :around (byte (type (eql :clx-im-xicattr-fr)) &key bytes)
-;;   (let ((frames NIL))
-;;     (labels ((read-frame ()
-;; 	       (push (call-next-method) frames)
-;; 	       (setf bytes (- bytes (size-packet (car frames))))
-;; 	       (when (> bytes 0)
-;; 		 (read-frame))))
-;;       (read-frame))
-;;     frames))
-
-
-
 
 (defmacro define-read-around (obj-type)
   (with-gensyms (framevar)
@@ -323,6 +274,21 @@
 (define-read-around :clx-im-xicattr-fr)
 (define-read-around :clx-im-ext-fr)
 (define-read-around :clx-im-ximtriggerkey-fr)
+
+(defun logT (obj)
+  (not (= 0 obj)))
+
+(defmethod -clx-xim-read-frame- :around (byte (type (eql :clx-im-commit-fr)) &key)
+  (let ((obj (make-instance 'clx-im-commit-fr)))
+    (with-slots (input-method-id input-context-id flag commit) obj
+      (setf  input-method-id (-clx-xim-read-frame- byte :u2)
+	     input-context-id (-clx-xim-read-frame- byte :u2)
+	     flag (-clx-xim-read-frame- byte :u2)
+	     commit (if (logT (logand flag *clx-xim-lookup-keysym*))
+			(-clx-xim-read-frame- byte :commit-both)
+			(if (eq *clx-xim-lookup-chars* (logand flag *clx-xim-lookup-both*))
+			    (-clx-xim-read-frame- byte :commit-chars)))))
+    obj))
 
 
 ;; (defmethod -clx-xim-read-frame- :around (byte (type (eql :clx-im-ext-fr)) &key bytes)
@@ -366,6 +332,9 @@
 ;;       (read-frame))
 ;;     frames))
 
+(defun data->slot (slot data)
+  `(setf ,(first slot) (-clx-xim-read-frame- ,data ,@(cdr slot))))
+
 (defmacro define-packet (packet-name ;; static-size-p
 			 slots
 			 &key size-packet opcode)
@@ -399,6 +368,3 @@
 			   (data->slot slot datavar))
 		       slots))
 	   ,objvar)))))
-
-(defun data->slot (slot data)
-  `(setf ,(first slot) (-clx-xim-read-frame- ,data ,@(cdr slot))))
